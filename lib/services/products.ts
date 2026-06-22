@@ -248,11 +248,9 @@ const applyFlashSaleDiscounts = async (products: Product[]): Promise<Product[]> 
     if (settings && settings.flash_sale_enabled === false) {
       return products;
     }
-    const { data: sections, error } = await staticSupabase
-      .from('homepage_sections')
-      .select('*')
-      .eq('section_type', 'flash_sale')
-      .eq('active', true);
+    const { getHomepageSections } = await import('./sections');
+    const allSections = await getHomepageSections(true);
+    const sections = allSections.filter(sec => sec.section_type === 'flash_sale');
 
     const now = Date.now();
 
@@ -513,9 +511,6 @@ const cachedProducts = unstable_cache(
 );
 
 export const getProducts = async (categoryId?: string) => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchProducts(categoryId);
-  }
   return cachedProducts(categoryId);
 };
 
@@ -574,9 +569,6 @@ const cachedRelatedProducts = (productId: string, categoryId?: string, limit = 4
 );
 
 export const getRelatedProducts = async (productId: string, categoryId?: string, limit = 4) => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchRelatedProducts(productId, categoryId, limit);
-  }
   return cachedRelatedProducts(productId, categoryId, limit)();
 };
 
@@ -611,9 +603,6 @@ const cachedProductBySlug = (slug: string) => unstable_cache(
 )();
 
 export const getProductBySlug = async (slug: string) => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchProductBySlug(slug);
-  }
   return cachedProductBySlug(slug);
 };
 

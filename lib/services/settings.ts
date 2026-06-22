@@ -580,9 +580,6 @@ const cachedSettings = unstable_cache(
 
 export const getSettings = async () => {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      return fetchSettings();
-    }
     return await cachedSettings();
   } catch (error) {
     console.warn('[settings] cachedSettings failed, falling back to direct fetchSettings:', error);

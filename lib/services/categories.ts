@@ -63,9 +63,6 @@ const cachedCategories = unstable_cache(
 );
 
 export const getCategories = async () => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchCategories();
-  }
   return cachedCategories();
 };
 
@@ -89,9 +86,6 @@ const cachedCategoryBySlug = (slug: string) => unstable_cache(
 )();
 
 export const getCategoryBySlug = async (slug: string) => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchCategoryBySlug(slug);
-  }
   return cachedCategoryBySlug(slug);
 };
 

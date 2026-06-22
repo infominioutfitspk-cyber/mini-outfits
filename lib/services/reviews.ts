@@ -64,9 +64,6 @@ const cachedProductReviews = (productId: string) => unstable_cache(
 )();
 
 export const getProductReviews = async (productId: string): Promise<Review[]> => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchProductReviews(productId);
-  }
   return cachedProductReviews(productId);
 };
 
@@ -239,9 +236,6 @@ const cachedAverageRating = (productId: string) => unstable_cache(
 )();
 
 export const getAverageRating = async (productId: string): Promise<{ average: number; count: number }> => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchAverageRating(productId);
-  }
   return cachedAverageRating(productId);
 };
 
@@ -277,9 +271,6 @@ const cachedTopReviews = unstable_cache(
 );
 
 export const getTopReviews = async (limit: number = 8): Promise<(Review & { productName?: string; productSlug?: string })[]> => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchTopReviews(limit);
-  }
   return cachedTopReviews(limit);
 };
 

@@ -38,9 +38,6 @@ const cachedSections = unstable_cache(
 
 export const getHomepageSections = async (onlyActive = false): Promise<HomepageSection[]> => {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      return await fetchHomepageSections(onlyActive);
-    }
     return await cachedSections(onlyActive);
   } catch (error) {
     console.error('[sections] getHomepageSections failed:', error);

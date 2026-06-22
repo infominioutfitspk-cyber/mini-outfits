@@ -45,9 +45,6 @@ const cachedSizeGuides = unstable_cache(
 );
 
 export const getSizeGuides = async (): Promise<SizeGuide[]> => {
-  if (process.env.NODE_ENV === 'development') {
-    return fetchSizeGuides();
-  }
   return cachedSizeGuides();
 };
 
