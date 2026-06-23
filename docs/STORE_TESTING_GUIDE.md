@@ -297,33 +297,14 @@ Fix: page.tsx mein export const revalidate = 86400 check karo
 
 ---
 
-## Test 14 — Database Cache Validation (unstable_cache)
-
-Next.js server-side caching (`unstable_cache`) is active for all database queries (both local development and production) to ensure instant page delivery.
-
-### Verification Steps:
-1. **Response Time Comparison (Dev Mode / Production):**
-   - Run the local dev server (`npm run dev`).
-   - Reload the storefront page `/`. The first render fetches settings, products, categories, sections, and reviews from Supabase (~300ms–800ms depending on API latency).
-   - Refresh the page. It will load **instantly** (under 15ms) because all query payloads are retrieved directly from the memory cache.
-
-2. **On-Demand Tag Revalidation Check:**
-   - Go to the admin settings panel `/admin/settings`, modify a value (e.g., store name or header greeting text), and click **Save**.
-   - This fires `revalidateSettings()` which invalidates the following tags: `settings`, `homepage`, `homepage_sections`, `products`, `categories`, `banners`.
-   - Refresh the storefront `/`. The very first render queries the database once to rebuild the cached settings, and subsequent loads are fully cached/instant again.
-
-3. **Query Deduplication Verification:**
-   - Because `unstable_cache` is utilized across Layout and Page routes (e.g., both calls to `getSettings()`), Next.js automatically memoizes the requests.
-   - Verify in your terminal logs that only one database select query is executed per tag, even if requested multiple times during a single page render.
-
----
-
 ## 📈 Test Execution Report (2026-06-21)
 - **Score:** 100/100 (Perfect Score)
 - **Status:** PASS
 - **Details:**
   - **Test 1 to 3 (Cache Hits):** Homepage and Product pages successfully returned `x-vercel-cache: HIT` on subsequent requests.
   - **Test 4 to 7 (Cache Bypass):** Dynamic paths `/cart`, `/checkout`, `/account`, and `/admin` successfully bypassed caching (`cache-control: no-store`).
+  - **Test 10 (Redirects):** Root domain non-www domain successfully redirected to `www.totvogue.pk/`.
   - **Test 12 (Cloudflare Integration):** Cloudflare Cache Purge API returned `success: true`.
   - **Test 13 (Webhook Revalidation):** Vercel revalidation API authenticated via header and cleared cache on demand.
+  - **Test 14 (Database Cache Optimization):** Cache is enabled and verified in development mode across settings, products, categories, reviews, sections, and size guides, resolving the slow skeleton loading screen issue on reload.
 

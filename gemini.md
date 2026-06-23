@@ -605,3 +605,21 @@ To prevent Vercel build-time crashes (`Error: supabaseUrl is required` / `Failed
 
 
 
+your-project/
+├── app/
+│   └── favicon.ico          ← SIRF ye ek file yahan (tab icon)
+│
+└── public/
+    ├── apple-touch-icon.png
+    ├── favicon-16x16.png
+    ├── favicon-32x32.png
+    ├── android-chrome-192x192.png
+    ├── android-chrome-512x512.png
+    └── site.webmanifest
+```
+
+---
+
+### Short rule:
+- **`favicon.ico`** → `app/` folder mein
+- **Baaki sab** → `public/` folder mein
