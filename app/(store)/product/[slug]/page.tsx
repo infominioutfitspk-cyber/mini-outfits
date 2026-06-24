@@ -10,6 +10,8 @@ import { Product } from '@/lib/types';
 import RecentlyViewed from '@/components/store/RecentlyViewed';
 import SocialFeedRibbon from '@/components/store/SocialFeedRibbon';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { getSiteUrl } from '@/lib/site-url-server';
+import { cleanLocalhostUrls } from '@/lib/site-url';
 import { Metadata } from 'next';
 import Breadcrumb from '@/components/Breadcrumb';
 
@@ -30,9 +32,9 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-function cleanMetaDescription(htmlText: string): string {
+function cleanMetaDescription(htmlText: string, siteUrl: string): string {
   if (!htmlText) return '';
-  let text = htmlText.replace(/http:\/\/localhost:3000/g, 'https://www.totvogue.pk');
+  let text = cleanLocalhostUrls(htmlText, siteUrl);
   text = text.replace(/<[^>]*>/g, ' ');
   text = text
     .replace(/&nbsp;/g, ' ')
@@ -59,18 +61,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       .maybeSingle();
 
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
-    const brandName = settings.storeName || 'Zaynahs E-Store';
+    const siteUrl = await getSiteUrl(settings);
+    const brandName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store';
 
     const title = seoMeta?.seo_title || `${product.name} | ${brandName}`;
     
     // Clean description: strip HTML tags first, then truncate safely to 160 characters
-    const rawDescription = seoMeta?.meta_description || cleanMetaDescription(product.description || '');
+    const rawDescription = seoMeta?.meta_description || cleanMetaDescription(product.description || '', siteUrl);
     const description = rawDescription.length > 160 ? `${rawDescription.slice(0, 157)}...` : rawDescription;
 
     const canonicalUrl = `${siteUrl}/product/${slug}`;
     const imageUrl = product.images?.[0]?.url 
-      ? product.images[0].url.replace(/http:\/\/localhost:3000/g, siteUrl) 
+      ? cleanLocalhostUrls(product.images[0].url, siteUrl) 
       : '/og-default.jpg';
 
     return {
@@ -137,17 +139,17 @@ export default async function ProductPage({ params }: PageProps) {
 
   const layout = settings.productPageLayout || ['details', 'ticker', 'reviews', 'related', 'recently_viewed', 'social_feed'];
 
-  const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+  const siteUrl = await getSiteUrl(settings);
   const productSchema: any = {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": product.name,
-    "image": product.images?.map(i => i.url.replace(/http:\/\/localhost:3000/g, siteUrl)) || [],
-    "description": cleanMetaDescription(product.description || ''),
+    "image": product.images?.map(i => cleanLocalhostUrls(i.url, siteUrl)) || [],
+    "description": cleanMetaDescription(product.description || '', siteUrl),
     "sku": product.sku || product.id,
     "brand": {
       "@type": "Brand",
-      "name": settings.storeName || 'TotVogue.pk'
+      "name": settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store'
     },
     "offers": {
       "@type": "Offer",

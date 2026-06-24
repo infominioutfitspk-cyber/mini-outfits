@@ -227,12 +227,37 @@ export default function AbandonedCartsPage() {
     return matchesStatus && matchesSearch && matchesDate;
   });
 
+  // Date-filtered active carts for stats
+  const dateFilteredCarts = carts.filter(c => {
+    if (c.orderPlaced) return false;
+    const activityTime = new Date(c.lastActivity).getTime();
+    const now = new Date();
+    const getStartOfDay = (d: Date) => { const cp = new Date(d); cp.setHours(0,0,0,0); return cp.getTime(); };
+    const getEndOfDay = (d: Date) => { const cp = new Date(d); cp.setHours(23,59,59,999); return cp.getTime(); };
+    let matchesDate = true;
+    if (dateFilter === 'today') { const s=getStartOfDay(now), e=getEndOfDay(now); matchesDate = activityTime>=s && activityTime<=e; }
+    else if (dateFilter === 'yesterday') { const y=new Date(now); y.setDate(y.getDate()-1); const s=getStartOfDay(y), e=getEndOfDay(y); matchesDate = activityTime>=s && activityTime<=e; }
+    else if (dateFilter === 'last7') { const d=new Date(now); d.setDate(d.getDate()-7); matchesDate = activityTime>=getStartOfDay(d) && activityTime<=getEndOfDay(now); }
+    else if (dateFilter === 'last30') { const d=new Date(now); d.setDate(d.getDate()-30); matchesDate = activityTime>=getStartOfDay(d) && activityTime<=getEndOfDay(now); }
+    else if (dateFilter === 'custom') { const s=customStartDate?getStartOfDay(new Date(customStartDate)):0; const e=customEndDate?getEndOfDay(new Date(customEndDate)):Infinity; matchesDate = activityTime>=s && activityTime<=e; }
+    return matchesDate;
+  });
+
   const selectedCartIndex = selectedCart ? filteredCarts.findIndex(c => c.id === selectedCart.id) : -1;
 
   const handlePrevCart = () => {
     if (selectedCartIndex > 0) {
       setSelectedCartId(filteredCarts[selectedCartIndex - 1].id);
     }
+  };
+
+  const stats = {
+    total: dateFilteredCarts.length + carts.filter(c => c.orderPlaced).length,
+    pending: dateFilteredCarts.filter(c => !c.emailSent).length,
+    emailed: dateFilteredCarts.filter(c => c.emailSent).length,
+    recovered: carts.filter(c => c.orderPlaced).length,
+    totalValue: dateFilteredCarts.reduce((s, c) => s + c.subtotal, 0) + carts.filter(c => c.orderPlaced).reduce((s, c) => s + c.subtotal, 0),
+    recoveredValue: carts.filter(c => c.orderPlaced).reduce((s, c) => s + c.subtotal, 0),
   };
 
   const handleNextCart = () => {
@@ -285,14 +310,6 @@ export default function AbandonedCartsPage() {
     return 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50';
   };
 
-  const stats = {
-    total: carts.length,
-    pending: carts.filter(c => !c.emailSent && !c.orderPlaced).length,
-    emailed: carts.filter(c => c.emailSent && !c.orderPlaced).length,
-    recovered: carts.filter(c => c.orderPlaced).length,
-    totalValue: carts.reduce((s, c) => s + c.subtotal, 0),
-    recoveredValue: carts.filter(c => c.orderPlaced).reduce((s, c) => s + c.subtotal, 0),
-  };
 
   return (
     <div className="space-y-6 relative">

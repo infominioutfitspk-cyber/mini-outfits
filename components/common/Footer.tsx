@@ -213,6 +213,11 @@ export default function Footer({ settings }: FooterProps) {
                       </Link>
                     </li>
                   )}
+                  <li>
+                    <Link href="/reviews" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
+                      Reviews
+                    </Link>
+                  </li>
                   {settings.showReturnsInFooter !== false && (
                     <li>
                       <Link href="/returns" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
@@ -238,6 +243,11 @@ export default function Footer({ settings }: FooterProps) {
                   <li>
                     <Link href="/cart" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
                       Cart
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/reviews" className="text-gray-500 hover:text-[#e94560] dark:text-gray-400 dark:hover:text-white transition-colors block">
+                      Reviews
                     </Link>
                   </li>
                   <li>

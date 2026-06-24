@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingCart, LayoutDashboard, Search, X, Heart, ChevronDown, ChevronRight, User, HelpCircle, RefreshCw, Shield } from '@/components/common/Icons';
+import { ShoppingCart, LayoutDashboard, Search, X, Heart, ChevronDown, ChevronRight, User, HelpCircle, RefreshCw, Shield, Star } from '@/components/common/Icons';
 import { useCart } from '@/lib/hooks/useCart';
 import ThemeToggle from '@/components/common/ThemeToggle';
 import { useSearchStore } from '@/store/searchStore';
@@ -807,6 +807,14 @@ export default function Navbar({
                       <span>FAQ</span>
                     </Link>
                   )}
+                  <Link
+                    href="/reviews"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 py-1.5 text-sm font-bold text-gray-900 dark:text-white hover:text-[#e94560] transition-colors"
+                  >
+                    <Star className="h-4 w-4" />
+                    <span>Reviews</span>
+                  </Link>
                   {settings?.showReturnsInNav !== false && (
                     <Link
                       href="/returns"

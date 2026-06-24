@@ -113,7 +113,7 @@ export async function POST(
     const mergedData = { ...mockData, settings, resetLink: dynamicResetLink };
 
     // Build variable values
-    const variables = buildVariables(type, mergedData);
+    const variables = await buildVariables(type, mergedData);
     
     if (mockData.order?.items) {
       variables.order_items_html = renderOrderItemsTable(mockData.order.items, settings.currencySymbol);

@@ -99,6 +99,18 @@ Never store base64 in DB.
 ID: `00000000-0000-4000-8000-000000000001`
 Never create second row.
 
+## RULE D7 — SUPABASE API-ONLY OPERATIONS (STRICTLY ENFORCED)
+
+> ⚠️ **CRITICAL DIRECTIVE**: Ab se har Supabase operation — schema migration, SQL query, auth config, user management, storage buckets, RLS policies, webhooks, edge functions, secrets, network rules, SSL, custom domains, branches, data CRUD — sab kuch **sirf Management API ya Service API** ke through hoga.
+
+- **❌ BANNED:** Prisma, Prisma Migrate, direct Postgres connection strings, `psql`, Supabase CLI `link`, Supabase CLI `db push`, or any SQL client that connects via DB password.
+- **✅ ALLOWED:** `curl` with `sbp_` token (Management API) ya `service_role` key (Service API). Full reference: [SUPABASE_API_GUIDE.md](docs/SUPABASE_API_GUIDE.md)
+- **Rule:** Koi bhi feature ya database change implement karte waqt, pehle `SUPABASE_API_GUIDE.md` check karo. Wahan har operation ka curl example milega. Agar koi operation missing ho toh guide ko update karo.
+- **Schema migrations:** `supabase/migrations/` files banao, but unhe DB pe apply karo via `POST /v1/projects/{ref}/database/migrations` (Management API). Kabhi bhi `supabase db push` ya `psql` mat chalana.
+- **RLS Policies & Storage Policies:** SQL ke through Management API ke `database/query` endpoint se. Kabhi bhi Dashboard ya psql se nahi.
+- **Auth users:** `POST /auth/v1/admin/users` (Service API) se. Kabhi bhi Dashboard ya direct SQL se nahi.
+- **Storage buckets:** `POST /storage/v1/bucket` (Service API) se. Kabhi bhi Dashboard se nahi.
+
 ## RULE D4 — SOFT DELETE
 Never hard delete products. Use `products.active = false`.
 Admin can restore. Customer catalog never shows `active = false` products.

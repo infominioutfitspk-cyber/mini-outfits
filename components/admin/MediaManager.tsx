@@ -85,6 +85,7 @@ export default function MediaManager({ mode, onSelect, multiple = false, onClose
 
   // ─── Library State ──────────────────────────────────────────────────────
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [deletedBytes, setDeletedBytes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [aiFilter, setAiFilter] = useState<'all' | 'generated' | 'pending'>('all');
@@ -239,6 +240,14 @@ export default function MediaManager({ mode, onSelect, multiple = false, onClose
       const { data, error } = await query;
       if (error) throw error;
       setMedia(data || []);
+
+      // Also fetch total size of soft-deleted media for accurate storage
+      const { data: deletedData } = await supabase
+        .from('media_library')
+        .select('file_size')
+        .not('deleted_at', 'is', null);
+      const totalDeletedBytes = (deletedData || []).reduce((sum, item) => sum + (item.file_size || 0), 0);
+      setDeletedBytes(totalDeletedBytes);
     } catch (err: any) {
       console.error('[Media Manager] Load error:', err);
       toast.error('Failed to load media files');
@@ -322,7 +331,7 @@ export default function MediaManager({ mode, onSelect, multiple = false, onClose
 
   // Storage stats
   const totalCapacityBytes = 1024 * 1024 * 1024;
-  const usedBytes = media.reduce((sum, item) => sum + (item.file_size || 0), 0);
+  const usedBytes = media.reduce((sum, item) => sum + (item.file_size || 0), 0) + deletedBytes;
   const unusedBytes = cleanerUnused.reduce((sum, item) => sum + (item.file_size || 0), 0);
   const usedPercentage = Math.min(100, (usedBytes / totalCapacityBytes) * 100);
   const isUploading = uploadTasks.some(t => t.status === 'uploading');
@@ -787,6 +796,36 @@ export default function MediaManager({ mode, onSelect, multiple = false, onClose
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) { toast.warning('No files selected.'); return; }
+    if (!confirm(`Move ${selectedIds.length} file(s) to Trash?`)) return;
+    try {
+      setIsBulkDeleting(true);
+      const toastId = toast.loading(`Moving ${selectedIds.length} file(s) to Trash...`);
+      const supabase = createClient();
+      const { error: dbError } = await supabase
+        .from('media_library')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', selectedIds);
+      if (dbError) throw dbError;
+
+      toast.success(`${selectedIds.length} file(s) moved to Trash.`, { id: toastId });
+      setSelectedIds([]);
+      fetchMedia();
+      loadUsageCrossReferences();
+    } catch (err: any) {
+      logDbError({
+        file: 'components/admin/MediaManager.tsx',
+        functionName: 'handleBulkDelete',
+        table: 'media_library',
+        action: 'UPDATE'
+      }, err);
+      toast.error(`Bulk move to Trash failed: ${err?.message || err}`);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   const handleCopyUrl = (url: string) => { navigator.clipboard.writeText(url); toast.success('Image URL copied'); };
 
   // ════════════════════════════════════════════════════════════════════════
@@ -919,7 +958,7 @@ export default function MediaManager({ mode, onSelect, multiple = false, onClose
               checked={isSelected}
               onChange={onToggle}
               onClick={e => e.stopPropagation()}
-              className="absolute top-3 left-3 h-4 w-4 text-blue-600 rounded border-gray-300 cursor-pointer z-10 accent-blue-600"
+              className="absolute top-3 left-3 h-4 w-4 text-blue-600 rounded border-gray-300 cursor-pointer z-20 accent-blue-600"
             />
           )
         )}
@@ -1210,11 +1249,18 @@ export default function MediaManager({ mode, onSelect, multiple = false, onClose
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             {selectedIds.length > 0 && mainTab === 'library' && (
-              <button type="button" onClick={handleBulkGenerate} disabled={bulkGenerating}
+              <>
+                <button type="button" onClick={handleBulkDelete} disabled={isBulkDeleting}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 active:scale-95 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-xs transition-all cursor-pointer min-h-[44px] flex-1 sm:flex-none">
+                  {isBulkDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  <span>Delete ({selectedIds.length})</span>
+                </button>
+                <button type="button" onClick={handleBulkGenerate} disabled={bulkGenerating}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 active:scale-95 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-xs transition-all cursor-pointer min-h-[44px] flex-1 sm:flex-none">
                 {bulkGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                 <span>Bulk Vision AI ({selectedIds.length})</span>
               </button>
+              </>
             )}
             {mainTab === 'library' && (
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}

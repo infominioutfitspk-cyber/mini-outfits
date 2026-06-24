@@ -1,33 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Trash2, Plus, Save, Tag, Palette, Ruler, Package, Check, ChevronDown, Edit2, Download, Upload 
+import {
+  Trash2, Plus, Save, Tag, Palette, Ruler, Package, ChevronDown, Edit2, Download, Upload
 } from '@/components/common/Icons';
 import { VariantPreset, VariantPresetValue } from '@/lib/types';
-import { 
-  getVariantPresets, 
-  createVariantPreset, 
+import {
+  getVariantPresets,
+  createVariantPreset,
   deleteVariantPreset,
-  updateVariantPreset 
+  updateVariantPreset
 } from '@/lib/services/variantPresets';
 import { toast } from 'sonner';
-
-const BUILT_IN_PRESETS: Omit<VariantPreset, 'id' | 'createdAt'>[] = [
-  { name: 'Kids Sizes (Years)', attribute: 'size', values: ['1-2y','2-3y','3-4y','4-5y','5-6y','6-7y','7-8y','8-9y','9-10y','10-11y','11-12y'].map(l => ({ label: l })) },
-  { name: 'Kids Sizes (Number)', attribute: 'size', values: ['22','24','26','28','30','32','34','36','38','40'].map(l => ({ label: l })) },
-  { name: 'Adult Clothing Sizes', attribute: 'size', values: ['XS','S','M','L','XL','XXL','3XL'].map(l => ({ label: l })) },
-  { name: 'Shoe Sizes (UK)', attribute: 'size', values: ['4','5','6','7','8','9','10','11','12'].map(l => ({ label: l })) },
-  { name: 'Standard Colors', attribute: 'color', values: [
-    { label: 'Black', hex: '#000000' }, { label: 'White', hex: '#ffffff' }, { label: 'Red', hex: '#e94560' },
-    { label: 'Navy Blue', hex: '#1a1a2e' }, { label: 'Grey', hex: '#9ca3af' }, { label: 'Green', hex: '#10b981' }
-  ]},
-  { name: 'Denim Colors', attribute: 'color', values: [
-    { label: 'Light Blue', hex: '#93c5fd' }, { label: 'Dark Blue', hex: '#1e3a8a' }, { label: 'Black', hex: '#000000' },
-    { label: 'Grey', hex: '#6b7280' }, { label: 'White', hex: '#f9fafb' }
-  ]},
-  { name: 'Material Types', attribute: 'material', values: ['Cotton','Polyester','Wool','Silk','Denim','Linen'].map(l => ({ label: l })) },
-];
 
 const standardColorMap: Record<string, string> = {
   black: '#000000',
@@ -64,6 +48,7 @@ export default function VariantPresetsPage() {
   const [newValues, setNewValues] = useState<VariantPresetValue[]>([]);
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedPresetIds, setSelectedPresetIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -142,25 +127,13 @@ export default function VariantPresetsPage() {
     }
   };
 
-  const handleImportBuiltIn = async (preset: Omit<VariantPreset, 'id' | 'createdAt'>) => {
-    const exists = presets.find(p => p.name === preset.name);
-    if (exists) return toast.error('Preset already exists');
-    try {
-      const created = await createVariantPreset(preset);
-      setPresets(prev => [...prev, created]);
-      toast.success(`Imported: ${preset.name}`);
-    } catch {
-      toast.error('Failed to import preset');
-    }
-  };
-
-  // Export all presets to a JSON file
   const handleExportJSON = () => {
     try {
-      if (presets.length === 0) {
-        return toast.error('No presets to export');
-      }
-      const exportData = presets.map(p => ({
+      const toExport = selectedPresetIds.size > 0
+        ? presets.filter(p => selectedPresetIds.has(p.id))
+        : presets;
+      if (toExport.length === 0) return toast.error('No presets to export');
+      const exportData = toExport.map(p => ({
         name: p.name,
         attribute: p.attribute,
         values: p.values
@@ -176,9 +149,10 @@ export default function VariantPresetsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      setSelectedPresetIds(new Set());
       
       toast.success('Variant Presets exported successfully.');
-    } catch (err) {
+    } catch {
       toast.error('Failed to export presets');
     }
   };
@@ -253,35 +227,6 @@ export default function VariantPresetsPage() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Save reusable variant sets (sizes, colors, materials) and instantly import them when creating products.
         </p>
-      </div>
-
-      {/* Built-in presets to import */}
-      <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
-        <h2 className="text-sm font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
-          Built-in Presets — Click to Import
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {BUILT_IN_PRESETS.map((preset, i) => {
-            const already = presets.find(p => p.name === preset.name);
-            const Icon = ATTR_ICONS[preset.attribute];
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => handleImportBuiltIn(preset)}
-                disabled={!!already}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  already
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800'
-                    : 'bg-gray-50 dark:bg-[#0f0f1b] border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-[#e94560] hover:text-[#e94560]'
-                }`}
-              >
-                {already ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
-                {preset.name}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Create / Edit Custom Preset */}
@@ -398,9 +343,31 @@ export default function VariantPresetsPage() {
       {/* Saved Presets */}
       <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-          <h2 className="text-sm font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Saved Presets ({presets.length})
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Saved Presets ({presets.length})
+            </h2>
+            {presets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedPresetIds.size === presets.length) {
+                    setSelectedPresetIds(new Set());
+                  } else {
+                    setSelectedPresetIds(new Set(presets.map(p => p.id)));
+                  }
+                }}
+                className="text-[10px] text-gray-500 dark:text-gray-400 hover:text-[#e94560] font-bold uppercase tracking-wider cursor-pointer"
+              >
+                {selectedPresetIds.size === presets.length ? 'Deselect All' : 'Select All'}
+              </button>
+            )}
+            {selectedPresetIds.size > 0 && (
+              <span className="text-[10px] text-gray-400 font-semibold">
+                {selectedPresetIds.size} selected
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -447,6 +414,21 @@ export default function VariantPresetsPage() {
                     className="flex items-center gap-3 p-3.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#0f0f1b] transition-colors"
                     onClick={() => setExpandedId(isExpanded ? null : preset.id)}
                   >
+                    <input
+                      type="checkbox"
+                      checked={selectedPresetIds.has(preset.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setSelectedPresetIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(preset.id)) next.delete(preset.id);
+                          else next.add(preset.id);
+                          return next;
+                        });
+                      }}
+                      onClick={e => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-[#e94560] focus:ring-[#e94560] cursor-pointer flex-shrink-0"
+                    />
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a1a2e] dark:bg-[#e94560] flex-shrink-0">
                       <Icon className="h-4 w-4 text-white" />
                     </div>

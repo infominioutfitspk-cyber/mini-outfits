@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSettings } from '@/lib/services/settings';
+import { getSiteUrl } from '@/lib/site-url-server';
 import { Metadata } from 'next';
 
 export const revalidate = 300; // Cache redirect for 5 minutes
@@ -33,8 +34,8 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       .maybeSingle();
 
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
-    const brandName = settings.storeName || 'Zaynahs E-Store';
+    const siteUrl = await getSiteUrl(settings);
+    const brandName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store';
 
     const title = seoMeta?.seo_title || `${category.name} | ${brandName}`;
     const description = seoMeta?.meta_description || category.description || '';

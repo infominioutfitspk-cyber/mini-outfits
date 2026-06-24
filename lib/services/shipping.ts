@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ShippingMethod } from '@/lib/types';
 import { revalidateTag } from 'next/cache';
 
@@ -9,7 +10,7 @@ export async function getShippingMethods(onlyActive = false): Promise<ShippingMe
   let query = supabase
     .from('shipping_methods')
     .select('*')
-    .order('cost', { ascending: true });
+    .order('sort_order', { ascending: true });
 
   if (onlyActive) {
     query = query.eq('active', true);
@@ -27,6 +28,7 @@ export async function getShippingMethods(onlyActive = false): Promise<ShippingMe
     cost: Number(row.cost),
     estimatedDays: row.estimated_days,
     active: row.active,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at
   }));
 }
@@ -36,15 +38,30 @@ export async function createShippingMethod(data: {
   cost: number;
   estimatedDays?: string;
   active?: boolean;
+  sortOrder?: number;
 }): Promise<ShippingMethod> {
   const supabase = await createClient();
+
+  // Auto-assign next sort_order if not provided
+  let sortOrder = data.sortOrder;
+  if (sortOrder === undefined) {
+    const { data: maxRow } = await supabase
+      .from('shipping_methods')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    sortOrder = (maxRow?.sort_order ?? 0) + 1;
+  }
+
   const { data: row, error } = await supabase
     .from('shipping_methods')
     .insert([{
       name: data.name,
       cost: data.cost,
       estimated_days: data.estimatedDays,
-      active: data.active ?? true
+      active: data.active ?? true,
+      sort_order: sortOrder
     }])
     .select()
     .single();
@@ -61,6 +78,7 @@ export async function createShippingMethod(data: {
     cost: Number(row.cost),
     estimatedDays: row.estimated_days,
     active: row.active,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at
   };
 }
@@ -76,6 +94,7 @@ export async function updateShippingMethod(
   if (data.cost !== undefined) updatePayload.cost = data.cost;
   if (data.estimatedDays !== undefined) updatePayload.estimated_days = data.estimatedDays;
   if (data.active !== undefined) updatePayload.active = data.active;
+  if (data.sortOrder !== undefined) updatePayload.sort_order = data.sortOrder;
 
   const { data: row, error } = await supabase
     .from('shipping_methods')
@@ -96,8 +115,23 @@ export async function updateShippingMethod(
     cost: Number(row.cost),
     estimatedDays: row.estimated_days,
     active: row.active,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at
   };
+}
+
+export async function reorderShippingMethods(orderedIds: string[]): Promise<void> {
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabaseAdmin
+      .from('shipping_methods')
+      .update({ sort_order: i })
+      .eq('id', orderedIds[i]);
+    if (error) {
+      console.error('reorderShippingMethods failed:', error);
+      throw error;
+    }
+  }
+  (revalidateTag as any)('shipping_methods');
 }
 
 export async function deleteShippingMethod(id: string): Promise<void> {

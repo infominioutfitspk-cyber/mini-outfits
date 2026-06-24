@@ -1,8 +1,8 @@
 import { revalidateTag, revalidatePath } from 'next/cache';
+import { getSiteUrl } from '@/lib/site-url-server';
 
 const CLOUDFLARE_ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
 
 async function resolveSiteUrl(): Promise<string> {
   try {
@@ -13,13 +13,11 @@ async function resolveSiteUrl(): Promise<string> {
       .select('store_url')
       .eq('id', '00000000-0000-4000-8000-000000000001')
       .maybeSingle();
-    if (data?.store_url) {
-      return data.store_url;
-    }
+    return getSiteUrl({ storeUrl: data?.store_url });
   } catch (e) {
     console.warn('Failed to resolve dynamic siteUrl:', e);
   }
-  return SITE_URL;
+  return getSiteUrl();
 }
 
 async function purgeCloudflareUrls(urls: string[]) {

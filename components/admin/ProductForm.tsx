@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Trash2, Plus, Upload, Star, Bold, Italic, Underline, List, ListOrdered, Code, Eye, X, FolderOpen, Search, Check, Image as ImageIcon, ChevronDown, Zap, Loader2 } from '@/components/common/Icons';
+import { Trash2, Plus, Upload, Star, Bold, Italic, Underline, List, ListOrdered, Code, Eye, X, FolderOpen, Search, Check, Image as ImageIcon, ChevronDown, ChevronUp, Zap, Loader2 } from '@/components/common/Icons';
 import { Product, ProductImage, ProductVariant, ProductModifier, Category, VariantPreset, VariantPresetValue, Badge, SizeGuide } from '@/lib/types';
 import { createProduct, updateProduct } from '@/lib/services/products';
 import { deleteProductImage } from '@/lib/services/storage';
@@ -334,6 +334,16 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
   const [variantAxes, setVariantAxes] = useState<VariantAxis[]>(initAxes);
   const [axisInputs, setAxisInputs] = useState<string[]>(() => initAxes().map(() => ''));
   const [presets, setPresets] = useState<VariantPreset[]>([]);
+  const [collapsedAxes, setCollapsedAxes] = useState<boolean[]>(() => initAxes().map(() => false));
+  const [variantsSectionCollapsed, setVariantsSectionCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsedAxes(prev => {
+      const len = variantAxes.length;
+      if (prev.length === len) return prev;
+      return Array.from({ length: len }, (_, i) => prev[i] ?? false);
+    });
+  }, [variantAxes.length]);
 
   const handleMoveAxisUp = (idx: number) => {
     if (idx === 0) return;
@@ -1209,7 +1219,21 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
             {/* Variants Block — Enhanced */}
             <div className="bg-white dark:bg-[#16162a] p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-5 text-gray-900 dark:text-white transition-colors">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">Product Variants</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVariantsSectionCollapsed(prev => !prev)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-all cursor-pointer"
+                  >
+                    {variantsSectionCollapsed ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                    {variantsSectionCollapsed ? 'Expand All' : 'Collapse All'}
+                  </button>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">Product Variants</h3>
+                </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -1221,7 +1245,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                 </label>
               </div>
 
-              {hasVariants && (
+              {hasVariants && !variantsSectionCollapsed && (
                 <div className="space-y-5 pt-1">
                   <div className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl">
                     <div className="flex flex-col">
@@ -1256,11 +1280,18 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                   </div>
 
 
-                  {/* Attribute Axes */}
+                      {/* Attribute Axes */}
                   {variantAxes.map((axis, axisIdx) => (
                     <div key={axisIdx} className="bg-gray-50 dark:bg-[#0f0f1b]/50 border border-gray-200 dark:border-gray-800 rounded-xl p-4 space-y-3">
                       {/* Axis header */}
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCollapsedAxes(prev => prev.map((c, i) => i === axisIdx ? !c : c))}
+                          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all cursor-pointer flex-shrink-0"
+                        >
+                          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${collapsedAxes[axisIdx] ? '-rotate-90' : ''}`} />
+                        </button>
                         <input
                           type="text"
                           value={axis.name}
@@ -1311,6 +1342,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         )}
                       </div>
 
+                      {!collapsedAxes[axisIdx] && (<>
                       {/* Import Preset */}
                       {presets.filter(p => p.attribute === axis.type).length > 0 && (
                         <div className="flex items-center gap-2">
@@ -1610,6 +1642,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                           ))}
                         </div>
                       )}
+                      </>)}
                     </div>
                   ))}
 
@@ -1646,6 +1679,22 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         Clear All
                       </button>
                     )}
+                    {variantAxes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allCollapsed = collapsedAxes.every(Boolean);
+                          setCollapsedAxes(Array(variantAxes.length).fill(!allCollapsed));
+                        }}
+                        className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer"
+                      >
+                        {collapsedAxes.every(Boolean) ? (
+                          <><ChevronDown className="h-3.5 w-3.5" /> Expand All</>
+                        ) : (
+                          <><ChevronUp className="h-3.5 w-3.5" /> Collapse All</>
+                        )}
+                      </button>
+                    )}
                     <span className="text-xs text-gray-400 font-semibold ml-auto">
                       {variants.length} variant{variants.length !== 1 ? 's' : ''}
                     </span>
@@ -1653,9 +1702,9 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
 
                   {/* Shopify-style Bulk Editor Actions Bar */}
                   {selectedVariantIndices.length > 0 && (
-                    <div className="bg-white dark:bg-[#16162a] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 animate-fade-in transition-all">
+                    <div className="bg-white dark:bg-[#16162a] p-4 pb-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3 animate-fade-in transition-all">
                       {/* Top Row: Selected info + Clear button, and Bulk Delete Button */}
-                      <div className="flex items-center justify-between pb-3.5 border-b border-gray-100 dark:border-gray-800">
+                      <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-bold bg-[#e94560]/10 text-[#e94560] px-3 py-1.5 rounded-full border border-[#e94560]/20">
                             {selectedVariantIndices.length} Selected
@@ -1679,20 +1728,20 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         </button>
                       </div>
 
-                      {/* Inputs Row - Grid: stacks on mobile (1 col), 5 cols on tablet/desktop */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                      {/* Inputs Row - Grid: stacks on mobile (1 col), 5 cols on large screens */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         {/* Price */}
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
-                            Bulk Edit Price
+                            Price
                           </label>
                           <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] focus-within:border-primary focus-within:bg-white transition-all">
                             <input
                               id="bulk-price-input"
                               type="number"
-                              placeholder="Enter price (e.g. 800)"
+                              placeholder="Enter price"
                               style={{ borderWidth: 0 }}
-                              className="w-full bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
+                              className="w-full min-w-0 bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -1714,7 +1763,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                                   input.value = '';
                                 }
                               }}
-                              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-bold cursor-pointer transition-colors"
+                              className="bg-primary hover:bg-primary-hover text-white px-2.5 py-2 text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap"
                             >
                               Apply
                             </button>
@@ -1724,15 +1773,15 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         {/* Stock */}
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
-                            Bulk Edit Stock
+                            Stock
                           </label>
                           <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] focus-within:border-primary focus-within:bg-white transition-all">
                             <input
                               id="bulk-stock-input"
                               type="number"
-                              placeholder="Enter stock (e.g. 10)"
+                              placeholder="Enter stock"
                               style={{ borderWidth: 0 }}
-                              className="w-full bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
+                              className="w-full min-w-0 bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -1754,7 +1803,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                                   input.value = '';
                                 }
                               }}
-                              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-bold cursor-pointer transition-colors"
+                              className="bg-primary hover:bg-primary-hover text-white px-2.5 py-2 text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap"
                             >
                               Apply
                             </button>
@@ -1764,15 +1813,15 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         {/* SKU */}
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
-                            Bulk Edit SKU
+                            SKU
                           </label>
                           <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] focus-within:border-primary focus-within:bg-white transition-all">
                             <input
                               id="bulk-sku-input"
                               type="text"
-                              placeholder="Enter SKU prefix/code"
+                              placeholder="SKU prefix"
                               style={{ borderWidth: 0 }}
-                              className="w-full bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
+                              className="w-full min-w-0 bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -1790,7 +1839,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                                 handleBulkUpdateSku(val);
                                 input.value = '';
                               }}
-                              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-bold cursor-pointer transition-colors"
+                              className="bg-primary hover:bg-primary-hover text-white px-2.5 py-2 text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap"
                             >
                               Apply
                             </button>
@@ -1800,7 +1849,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         {/* Threshold */}
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
-                            Bulk Edit Threshold
+                            Threshold
                           </label>
                           <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] focus-within:border-primary focus-within:bg-white transition-all">
                             <input
@@ -1808,7 +1857,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                               type="number"
                               placeholder="Enter threshold"
                               style={{ borderWidth: 0 }}
-                              className="w-full bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
+                              className="w-full min-w-0 bg-transparent text-xs text-gray-900 dark:text-white px-3 py-2 focus:outline-none"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -1830,7 +1879,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                                   input.value = '';
                                 }
                               }}
-                              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-bold cursor-pointer transition-colors"
+                              className="bg-primary hover:bg-primary-hover text-white px-2.5 py-2 text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap"
                             >
                               Apply
                             </button>
@@ -1840,20 +1889,20 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                         {/* Active Status */}
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
-                            Bulk Edit Status
+                            Status
                           </label>
-                          <div className="flex gap-2 h-9">
+                          <div className="flex gap-2">
                             <button
                               type="button"
                               onClick={() => handleBulkUpdateActive(true)}
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors active:scale-95 flex items-center justify-center"
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors active:scale-95 flex items-center justify-center py-2"
                             >
                               Activate
                             </button>
                             <button
                               type="button"
                               onClick={() => handleBulkUpdateActive(false)}
-                              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors active:scale-95 flex items-center justify-center"
+                              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors active:scale-95 flex items-center justify-center py-2"
                             >
                               Deactivate
                             </button>
@@ -1865,11 +1914,11 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
 
                   {/* Variants Table - desktop */}
                   {variants.length > 0 && (
-                    <div className="hidden md:block overflow-x-auto border border-gray-100 dark:border-gray-800 rounded-xl">
+                    <div className="hidden md:block overflow-x-auto border border-gray-200 dark:border-gray-800 rounded-xl shadow-xs">
                       <table className="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                        <thead className="bg-gray-50 dark:bg-[#0f0f1b] border-b border-gray-100 dark:border-gray-800 font-bold uppercase text-gray-500">
-                          <tr>
-                            <th className="py-2.5 px-3 w-10">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-[#1a1a30] border-b border-gray-200 dark:border-gray-800 font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider">
+                            <th className="py-3 px-3 w-10">
                               <input
                                 type="checkbox"
                                 checked={selectedVariantIndices.length === variants.length && variants.length > 0}
@@ -1883,104 +1932,121 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                                 className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
                               />
                             </th>
-                            <th className="py-2.5 px-3">Variant</th>
-                            <th className="py-2.5 px-3">Color</th>
-                            <th className="py-2.5 px-3">Price</th>
-                            <th className="py-2.5 px-3">Stock *</th>
-                            <th className="py-2.5 px-3">Threshold</th>
-                            <th className="py-2.5 px-3">SKU</th>
-                            <th className="py-2.5 px-3 text-center">Active</th>
-                            <th className="py-2.5 px-3 text-center">Del</th>
+                            <th className="py-3 px-3 w-[21%]">Variant</th>
+                            <th className="py-3 px-3 w-[10%]">Color</th>
+                            <th className="py-3 px-3 w-[14%]">Price</th>
+                            <th className="py-3 px-3 w-[11%]">Stock *</th>
+                            <th className="py-3 px-3 w-[13%]">Threshold</th>
+                            <th className="py-3 px-3 w-[16%]">SKU</th>
+                            <th className="py-3 px-3 w-[10%] text-center">Active</th>
+                            <th className="py-3 px-3 w-[5%] text-center">Del</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
                           {variants.map((variant, idx) => {
                             const label = [variant.color, variant.size, variant.material, variant.customValue].filter(Boolean).join(' / ') || `Var ${idx + 1}`;
                             const isSelected = selectedVariantIndices.includes(idx);
                             return (
-                              <tr key={idx} className={`hover:bg-gray-50 dark:hover:bg-[#0f0f1b]/50 transition-colors ${isSelected ? 'bg-[#e94560]/5 dark:bg-[#e94560]/5' : ''}`}>
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedVariantIndices(prev => [...prev, idx]);
-                                      } else {
-                                        setSelectedVariantIndices(prev => prev.filter(i => i !== idx));
-                                      }
-                                    }}
-                                    className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
-                                  />
+                              <tr key={idx} className={`transition-colors ${isSelected ? 'bg-[#e94560]/5 dark:bg-[#e94560]/10' : idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50/40 dark:bg-white/[0.02]'} hover:bg-gray-100/60 dark:hover:bg-white/[0.04]`}>
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center justify-center min-h-[28px]">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedVariantIndices(prev => [...prev, idx]);
+                                        } else {
+                                          setSelectedVariantIndices(prev => prev.filter(i => i !== idx));
+                                        }
+                                      }}
+                                      className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
+                                    />
+                                  </div>
                                 </td>
-                                <td className="py-2 px-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                                  <div className="flex items-center gap-1.5">
+                                <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white">
+                                  <div className="flex items-center gap-1.5 min-h-[28px]">
                                     {variant.colorHex && (
                                       <span className="h-3 w-3 rounded-full flex-shrink-0 border border-gray-300" style={{ background: variant.colorHex }} />
                                     )}
-                                    {label}
+                                    <span className="truncate">{label}</span>
                                   </div>
                                 </td>
-                                <td className="py-2 px-3">
-                                  {variant.color && (
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center justify-center min-h-[28px]">
+                                    {variant.color && (
+                                      <input
+                                        type="color"
+                                        value={variant.colorHex || '#888888'}
+                                        onChange={(e) => handleUpdateVariant(idx, { colorHex: e.target.value })}
+                                        className="h-7 w-7 rounded cursor-pointer border-0 p-0.5 bg-transparent"
+                                      />
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center min-h-[28px]">
                                     <input
-                                      type="color"
-                                      value={variant.colorHex || '#888888'}
-                                      onChange={(e) => handleUpdateVariant(idx, { colorHex: e.target.value })}
-                                      className="h-6 w-6 rounded cursor-pointer border-0 p-0.5 bg-transparent"
+                                      type="number"
+                                      value={variant.price || ''}
+                                      placeholder={price}
+                                      onChange={(e) => handleUpdateVariant(idx, { price: parseFloat(e.target.value) || undefined })}
+                                      className="w-20 rounded-md border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b]/80 px-2 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#e94560] focus:ring-1 focus:ring-[#e94560]/20 transition-all"
                                     />
-                                  )}
+                                  </div>
                                 </td>
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="number"
-                                    value={variant.price || ''}
-                                    placeholder={price}
-                                    onChange={(e) => handleUpdateVariant(idx, { price: parseFloat(e.target.value) || undefined })}
-                                    className="w-20 rounded border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b] p-1 font-semibold text-xs"
-                                  />
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center min-h-[28px]">
+                                    <input
+                                      type="number"
+                                      required
+                                      value={variant.stock}
+                                      onChange={(e) => handleUpdateVariant(idx, { stock: parseInt(e.target.value) || 0 })}
+                                      className="w-20 rounded-md border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b]/80 px-2 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#e94560] focus:ring-1 focus:ring-[#e94560]/20 transition-all"
+                                    />
+                                  </div>
                                 </td>
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="number"
-                                    required
-                                    value={variant.stock}
-                                    onChange={(e) => handleUpdateVariant(idx, { stock: parseInt(e.target.value) || 0 })}
-                                    className="w-16 rounded border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b] p-1 font-semibold text-xs"
-                                  />
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center min-h-[28px]">
+                                    <input
+                                      type="number"
+                                      value={variant.inventoryThreshold || 0}
+                                      onChange={(e) => handleUpdateVariant(idx, { inventoryThreshold: parseInt(e.target.value) || 0 })}
+                                      className="w-20 rounded-md border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b]/80 px-2 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#e94560] focus:ring-1 focus:ring-[#e94560]/20 transition-all"
+                                    />
+                                  </div>
                                 </td>
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="number"
-                                    value={variant.inventoryThreshold || 0}
-                                    onChange={(e) => handleUpdateVariant(idx, { inventoryThreshold: parseInt(e.target.value) || 0 })}
-                                    className="w-16 rounded border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b] p-1 font-semibold text-xs"
-                                  />
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center min-h-[28px]">
+                                    <input
+                                      type="text"
+                                      value={variant.sku || ''}
+                                      onChange={(e) => handleUpdateVariant(idx, { sku: e.target.value })}
+                                      className="w-24 rounded-md border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b]/80 px-2 py-1.5 text-xs focus:outline-none focus:border-[#e94560] focus:ring-1 focus:ring-[#e94560]/20 transition-all"
+                                    />
+                                  </div>
                                 </td>
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="text"
-                                    value={variant.sku || ''}
-                                    onChange={(e) => handleUpdateVariant(idx, { sku: e.target.value })}
-                                    className="w-24 rounded border border-gray-200 dark:border-gray-700 dark:bg-[#0f0f1b] p-1 text-xs"
-                                  />
+                                <td className="py-2.5 px-3 text-center">
+                                  <div className="flex items-center justify-center min-h-[28px]">
+                                    <input
+                                      type="checkbox"
+                                      checked={variant.active}
+                                      onChange={(e) => handleUpdateVariant(idx, { active: e.target.checked })}
+                                      className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
+                                    />
+                                  </div>
                                 </td>
-                                <td className="py-2 px-3 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={variant.active}
-                                    onChange={(e) => handleUpdateVariant(idx, { active: e.target.checked })}
-                                    className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
-                                  />
-                                </td>
-                                <td className="py-2 px-3 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveVariant(idx)}
-                                    className="text-red-400 hover:text-red-600 p-1 cursor-pointer"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                <td className="py-2.5 px-3 text-center">
+                                  <div className="flex items-center justify-center min-h-[28px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveVariant(idx)}
+                                      className="text-red-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
+                                      title="Remove variant"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -2102,7 +2168,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
             {/* Custom Modifiers (Add-ons) */}
             <div className="bg-white dark:bg-[#16162a] p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 text-gray-900 dark:text-white transition-colors">
               <h3 className="text-base font-bold text-gray-900">Custom Modifiers (Add-ons)</h3>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   placeholder="Gift Wrap, Custom printing etc"
@@ -2120,7 +2186,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                 <button
                   type="button"
                   onClick={handleAddModifier}
-                  className="bg-[#1a1a2e] text-white p-2.5 rounded-xl flex items-center justify-center cursor-pointer"
+                  className="bg-[#1a1a2e] text-white py-2 px-3 rounded-xl flex items-center justify-center cursor-pointer"
                 >
                   <Plus className="h-5 w-5" />
                 </button>

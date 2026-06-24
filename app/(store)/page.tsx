@@ -6,6 +6,7 @@ import { getSettings } from '@/lib/services/settings';
 import { getTopReviews } from '@/lib/services/reviews';
 import { getHomepageSections } from '@/lib/services/sections';
 
+import { getSiteUrl } from '@/lib/site-url-server';
 import { Metadata } from 'next';
 
 export const revalidate = 86400; // 24 hours — webhooks purge on admin save
@@ -13,9 +14,9 @@ export const revalidate = 86400; // 24 hours — webhooks purge on admin save
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
+    const siteUrl = await getSiteUrl(settings);
 
-    const brandName = settings.storeName || 'Zaynahs E-Store';
+    const brandName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store';
     const tagline = settings.tagline || 'Premium Mobile Shop';
     const banner = settings.bannerUrl || '/og-default.jpg';
 

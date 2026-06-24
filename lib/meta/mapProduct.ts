@@ -1,3 +1,4 @@
+import { getClientSiteUrl } from '@/lib/site-url';
 import { Product, StoreSettings } from '@/lib/types';
 
 /**
@@ -113,12 +114,9 @@ export function mapProductToMeta(
   }
 
   // 2. Resolve Site URL and Brand Name fallbacks
-  let siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
-  if (siteUrl.includes('localhost') || siteUrl.includes('127.0.0.1')) {
-    siteUrl = 'https://www.totvogue.pk';
-  }
+  let siteUrl = getClientSiteUrl(settings);
   
-  const brandName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'TotVogue.pk';
+  const brandName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store';
   const currency = settings.currency || 'PKR';
   
   // 3. Resolve and clean image links (preventing localhost leakage)

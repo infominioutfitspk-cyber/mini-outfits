@@ -15,9 +15,11 @@ import {
   Images,
   MessageSquare,
   Phone,
-  Mail
+  Mail,
+  Ruler,
+  Layers
 } from '@/components/common/Icons';
-import { Product, Category, Review, Order, WhatsAppSubscriber, EmailSubscriber } from '@/lib/types';
+import { Product, Category, Review, Order, WhatsAppSubscriber, EmailSubscriber, SizeGuide, VariantPreset } from '@/lib/types';
 import { restoreProduct, hardDeleteProduct } from '@/lib/services/products';
 import { restoreCategory, hardDeleteCategory } from '@/lib/services/categories';
 import { restoreReview, hardDeleteReview } from '@/lib/services/reviews';
@@ -30,6 +32,8 @@ import {
   restoreEmailSubscriber, 
   hardDeleteEmailSubscriber 
 } from '@/lib/services/sections';
+import { restoreSizeGuide, hardDeleteSizeGuide, getDeletedSizeGuides } from '@/lib/services/sizeGuides';
+import { restoreVariantPreset, hardDeleteVariantPreset, getDeletedVariantPresets } from '@/lib/services/variantPresets';
 import {
   bulkRestoreProducts,
   bulkHardDeleteProducts,
@@ -44,7 +48,9 @@ import {
   bulkRestoreMedia,
   bulkHardDeleteMedia,
   bulkRestoreLeads,
-  bulkHardDeleteLeads
+  bulkHardDeleteLeads,
+  bulkRestoreSizeGuides, bulkHardDeleteSizeGuides,
+  bulkRestoreVariantPresets, bulkHardDeleteVariantPresets
 } from '@/lib/services/trash';
 import EmptyState from '@/components/common/EmptyState';
 
@@ -57,9 +63,11 @@ interface TrashConsoleProps {
   initialMedia: TrashedMedia[];
   initialWhatsAppSubscribers: WhatsAppSubscriber[];
   initialEmailSubscribers: EmailSubscriber[];
+  initialSizeGuides: SizeGuide[];
+  initialVariantPresets: VariantPreset[];
 }
 
-type TabType = 'products' | 'categories' | 'reviews' | 'orders' | 'customers' | 'media' | 'leads';
+type TabType = 'products' | 'categories' | 'reviews' | 'orders' | 'customers' | 'media' | 'leads' | 'size_guides' | 'variant_presets';
 
 export default function TrashConsole({
   initialProducts,
@@ -69,7 +77,9 @@ export default function TrashConsole({
   initialCustomers,
   initialMedia,
   initialWhatsAppSubscribers,
-  initialEmailSubscribers
+  initialEmailSubscribers,
+  initialSizeGuides,
+  initialVariantPresets
 }: TrashConsoleProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
@@ -79,6 +89,8 @@ export default function TrashConsole({
   const [media, setMedia] = useState<TrashedMedia[]>(initialMedia);
   const [whatsappSubscribers, setWhatsappSubscribers] = useState<WhatsAppSubscriber[]>(initialWhatsAppSubscribers);
   const [emailSubscribers, setEmailSubscribers] = useState<EmailSubscriber[]>(initialEmailSubscribers);
+  const [sizeGuides, setSizeGuides] = useState<SizeGuide[]>(initialSizeGuides);
+  const [variantPresets, setVariantPresets] = useState<VariantPreset[]>(initialVariantPresets);
 
   const [activeTab, setActiveTab] = useAdminTab<TabType>('products');
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,6 +207,16 @@ export default function TrashConsole({
     );
   });
 
+  const filteredSizeGuides = sizeGuides.filter(sg => {
+    const term = searchTerm.toLowerCase();
+    return (sg.name || '').toLowerCase().includes(term);
+  });
+
+  const filteredVariantPresets = variantPresets.filter(vp => {
+    const term = searchTerm.toLowerCase();
+    return (vp.name || '').toLowerCase().includes(term);
+  });
+
   const getActiveTabItems = () => {
     switch (activeTab) {
       case 'products': return filteredProducts;
@@ -204,6 +226,8 @@ export default function TrashConsole({
       case 'customers': return filteredCustomers;
       case 'media': return filteredMedia;
       case 'leads': return filteredLeads;
+      case 'size_guides': return filteredSizeGuides;
+      case 'variant_presets': return filteredVariantPresets;
       default: return [];
     }
   };
@@ -244,17 +268,25 @@ export default function TrashConsole({
           await restoreMedia(id);
           setMedia(prev => prev.filter(m => m.id !== id));
           toast.success('Media file restored successfully');
-        } else if (type === 'leads') {
-          if (extraInfo?.leadType === 'whatsapp') {
-            await restoreWhatsAppSubscriber(id);
-            setWhatsappSubscribers(prev => prev.filter(s => s.id !== id));
-          } else {
-            await restoreEmailSubscriber(id);
-            setEmailSubscribers(prev => prev.filter(s => s.id !== id));
+          } else if (type === 'leads') {
+            if (extraInfo?.leadType === 'whatsapp') {
+              await restoreWhatsAppSubscriber(id);
+              setWhatsappSubscribers(prev => prev.filter(s => s.id !== id));
+            } else {
+              await restoreEmailSubscriber(id);
+              setEmailSubscribers(prev => prev.filter(s => s.id !== id));
+            }
+            toast.success('Lead restored successfully');
+          } else if (type === 'size_guides') {
+            await restoreSizeGuide(id);
+            setSizeGuides(prev => prev.filter(x => x.id !== id));
+            toast.success('Size guide restored successfully');
+          } else if (type === 'variant_presets') {
+            await restoreVariantPreset(id);
+            setVariantPresets(prev => prev.filter(x => x.id !== id));
+            toast.success('Variant preset restored successfully');
           }
-          toast.success('Lead restored successfully');
-        }
-        setSelectedIds(prev => prev.filter(x => x !== id));
+          setSelectedIds(prev => prev.filter(x => x !== id));
       } catch (error) {
         console.error(`Restore failed for ${type}:`, error);
         toast.error(`Failed to restore ${type}`);
@@ -292,16 +324,24 @@ export default function TrashConsole({
           await hardDeleteMedia(id, extraInfo?.fileUrl || '');
           setMedia(prev => prev.filter(m => m.id !== id));
           toast.success('Media permanently deleted');
-        } else if (type === 'leads') {
-          if (extraInfo?.leadType === 'whatsapp') {
-            await hardDeleteWhatsAppSubscriber(id);
-            setWhatsappSubscribers(prev => prev.filter(s => s.id !== id));
-          } else {
-            await hardDeleteEmailSubscriber(id);
-            setEmailSubscribers(prev => prev.filter(s => s.id !== id));
+          } else if (type === 'leads') {
+            if (extraInfo?.leadType === 'whatsapp') {
+              await hardDeleteWhatsAppSubscriber(id);
+              setWhatsappSubscribers(prev => prev.filter(s => s.id !== id));
+            } else {
+              await hardDeleteEmailSubscriber(id);
+              setEmailSubscribers(prev => prev.filter(s => s.id !== id));
+            }
+            toast.success('Lead permanently deleted');
+          } else if (type === 'size_guides') {
+            await hardDeleteSizeGuide(id);
+            setSizeGuides(prev => prev.filter(x => x.id !== id));
+            toast.success('Size guide permanently deleted');
+          } else if (type === 'variant_presets') {
+            await hardDeleteVariantPreset(id);
+            setVariantPresets(prev => prev.filter(x => x.id !== id));
+            toast.success('Variant preset permanently deleted');
           }
-          toast.success('Lead permanently deleted');
-        }
         setSelectedIds(prev => prev.filter(x => x !== id));
         setConfirmDelete(null);
       } catch (error) {
@@ -346,6 +386,12 @@ export default function TrashConsole({
           await bulkRestoreLeads(whatsappIds, emailIds);
           setWhatsappSubscribers(prev => prev.filter(s => !whatsappIds.includes(s.id)));
           setEmailSubscribers(prev => prev.filter(s => !emailIds.includes(s.id)));
+        } else if (activeTab === 'size_guides') {
+          await bulkRestoreSizeGuides(idsToRestore);
+          setSizeGuides(prev => prev.filter(sg => !idsToRestore.includes(sg.id)));
+        } else if (activeTab === 'variant_presets') {
+          await bulkRestoreVariantPresets(idsToRestore);
+          setVariantPresets(prev => prev.filter(vp => !idsToRestore.includes(vp.id)));
         }
         setSelectedIds([]);
         toast.success(`Restored ${idsToRestore.length} item(s) successfully`);
@@ -395,6 +441,12 @@ export default function TrashConsole({
           await bulkHardDeleteLeads(whatsappIds, emailIds);
           setWhatsappSubscribers(prev => prev.filter(s => !whatsappIds.includes(s.id)));
           setEmailSubscribers(prev => prev.filter(s => !emailIds.includes(s.id)));
+        } else if (activeTab === 'size_guides') {
+          await bulkHardDeleteSizeGuides(idsToDelete);
+          setSizeGuides(prev => prev.filter(sg => !idsToDelete.includes(sg.id)));
+        } else if (activeTab === 'variant_presets') {
+          await bulkHardDeleteVariantPresets(idsToDelete);
+          setVariantPresets(prev => prev.filter(vp => !idsToDelete.includes(vp.id)));
         }
         setSelectedIds([]);
         setConfirmBulkDelete(false);
@@ -446,6 +498,12 @@ export default function TrashConsole({
           await bulkHardDeleteLeads(whatsappIds, emailIds);
           setWhatsappSubscribers(prev => prev.filter(s => !whatsappIds.includes(s.id)));
           setEmailSubscribers(prev => prev.filter(s => !emailIds.includes(s.id)));
+        } else if (activeTab === 'size_guides') {
+          await bulkHardDeleteSizeGuides(idsToDelete);
+          setSizeGuides(prev => prev.filter(sg => !idsToDelete.includes(sg.id)));
+        } else if (activeTab === 'variant_presets') {
+          await bulkHardDeleteVariantPresets(idsToDelete);
+          setVariantPresets(prev => prev.filter(vp => !idsToDelete.includes(vp.id)));
         }
         setSelectedIds([]);
         setConfirmEmptyTab(false);
@@ -503,6 +561,18 @@ export default function TrashConsole({
           await bulkHardDeleteLeads(whatsappIds, emailIds);
           setWhatsappSubscribers([]);
           setEmailSubscribers([]);
+        }
+        // 8. Size Guides
+        if (sizeGuides.length > 0) {
+          const ids = sizeGuides.map(sg => sg.id);
+          await bulkHardDeleteSizeGuides(ids);
+          setSizeGuides([]);
+        }
+        // 9. Variant Presets
+        if (variantPresets.length > 0) {
+          const ids = variantPresets.map(vp => vp.id);
+          await bulkHardDeleteVariantPresets(ids);
+          setVariantPresets([]);
         }
 
         setSelectedIds([]);
@@ -1309,8 +1379,27 @@ export default function TrashConsole({
       );
     }
 
+    const deletedMediaBytes = filteredMedia.reduce((sum, m) => sum + (m.file_size || 0), 0);
+    const totalCapacityBytes = 1_000_000_000;
+    const deletedPercentage = Math.min(100, (deletedMediaBytes / totalCapacityBytes) * 100);
+    const formatBytes = (bytes: number) => {
+      if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+      if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
+      return `${bytes} B`;
+    };
+
     return (
       <div className="space-y-4">
+        {/* Storage Bar */}
+        <div className="bg-white dark:bg-[#16162a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <span className="font-bold text-gray-700 dark:text-gray-300">Junk Storage:</span>
+            <span>{formatBytes(deletedMediaBytes)} wasted in trash of 1 GB ({deletedPercentage.toFixed(2)}%)</span>
+          </div>
+          <div className="w-full sm:max-w-xs bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+            <div className="bg-[#e94560] h-full rounded-full transition-all duration-500" style={{ width: `${deletedPercentage}%` }} />
+          </div>
+        </div>
         {/* Mobile View: Cards */}
         <div className="grid grid-cols-1 gap-4 md:hidden">
           {filteredMedia.map(m => {
@@ -1616,6 +1705,292 @@ export default function TrashConsole({
     );
   };
 
+  const renderSizeGuideTab = () => {
+    if (filteredSizeGuides.length === 0) {
+      return (
+        <EmptyState 
+          title="No trashed size guides" 
+          description={searchTerm ? "No size guides matching your search term." : "Your trash bin is clean of size guides."} 
+        />
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* Mobile View: Cards */}
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+          {filteredSizeGuides.map(sg => {
+            const isSelected = selectedIds.includes(sg.id);
+            return (
+              <div 
+                key={sg.id} 
+                className={`bg-white dark:bg-[#16162a] p-4 rounded-2xl border shadow-sm flex flex-col space-y-3 transition-colors ${
+                  isSelected ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/5' : 'border-gray-100 dark:border-gray-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(sg.id)}
+                    className="h-4.5 w-4.5 rounded-md border-gray-300 text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+                  />
+                  <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 dark:border-gray-850 flex-shrink-0 flex items-center justify-center">
+                    <Ruler className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-gray-900 dark:text-white truncate">{sg.name}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-450 truncate">
+                      {sg.chart_data?.length || 0} rows
+                    </p>
+                    {sg.deletedAt && (
+                      <p suppressHydrationWarning={true} className="text-[10px] text-gray-400 mt-0.5">
+                        Deleted: {new Date(sg.deletedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-2 border-t border-gray-50 dark:border-gray-800/50">
+                  <button
+                    onClick={() => handleRestore(sg.id, 'size_guides')}
+                    disabled={isPending}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Restore
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete({ id: sg.id, type: 'size_guides', name: sg.name })}
+                    disabled={isPending}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Forever
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-hidden bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="w-12 py-4 px-6">
+                  <input
+                    type="checkbox"
+                    checked={filteredSizeGuides.length > 0 && filteredSizeGuides.every(x => selectedIds.includes(x.id))}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded-md border-gray-300 text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+                  />
+                </th>
+                <th className="py-4 px-6">Size Guide</th>
+                <th className="py-4 px-6">Rows</th>
+                <th className="py-4 px-6">Deleted At</th>
+                <th className="py-4 px-6 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
+              {filteredSizeGuides.map(sg => {
+                const isSelected = selectedIds.includes(sg.id);
+                return (
+                  <tr key={sg.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
+                    <td className="py-4 px-6">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(sg.id)}
+                        className="h-4.5 w-4.5 rounded-md border-gray-300 text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-150 dark:border-gray-800 flex-shrink-0 flex items-center justify-center">
+                          <Ruler className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <p className="font-bold text-gray-900 dark:text-white">{sg.name}</p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-gray-500 dark:text-gray-400">{sg.chart_data?.length || 0}</td>
+                    <td suppressHydrationWarning={true} className="py-4 px-6 text-gray-500 dark:text-gray-400 text-xs">
+                      {sg.deletedAt ? new Date(sg.deletedAt).toLocaleString() : 'N/A'}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleRestore(sg.id, 'size_guides')}
+                          disabled={isPending}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({ id: sg.id, type: 'size_guides', name: sg.name })}
+                          disabled={isPending}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete Forever
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderVariantPresetTab = () => {
+    if (filteredVariantPresets.length === 0) {
+      return (
+        <EmptyState 
+          title="No trashed variant presets" 
+          description={searchTerm ? "No variant presets matching your search term." : "Your trash bin is clean of variant presets."} 
+        />
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* Mobile View: Cards */}
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+          {filteredVariantPresets.map(vp => {
+            const isSelected = selectedIds.includes(vp.id);
+            return (
+              <div 
+                key={vp.id} 
+                className={`bg-white dark:bg-[#16162a] p-4 rounded-2xl border shadow-sm flex flex-col space-y-3 transition-colors ${
+                  isSelected ? 'border-[#e94560] bg-[#e94560]/5 dark:bg-[#e94560]/5' : 'border-gray-100 dark:border-gray-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(vp.id)}
+                    className="h-4.5 w-4.5 rounded-md border-gray-300 text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+                  />
+                  <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 dark:border-gray-850 flex-shrink-0 flex items-center justify-center">
+                    <Layers className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-gray-900 dark:text-white truncate">{vp.name}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-450 truncate">
+                      {vp.attribute} · {vp.values?.length || 0} values
+                    </p>
+                    {vp.deletedAt && (
+                      <p suppressHydrationWarning={true} className="text-[10px] text-gray-400 mt-0.5">
+                        Deleted: {new Date(vp.deletedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-2 border-t border-gray-50 dark:border-gray-800/50">
+                  <button
+                    onClick={() => handleRestore(vp.id, 'variant_presets')}
+                    disabled={isPending}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Restore
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete({ id: vp.id, type: 'variant_presets', name: vp.name })}
+                    disabled={isPending}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Forever
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-hidden bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="w-12 py-4 px-6">
+                  <input
+                    type="checkbox"
+                    checked={filteredVariantPresets.length > 0 && filteredVariantPresets.every(x => selectedIds.includes(x.id))}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded-md border-gray-300 text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+                  />
+                </th>
+                <th className="py-4 px-6">Variant Preset</th>
+                <th className="py-4 px-6">Attribute</th>
+                <th className="py-4 px-6">Values</th>
+                <th className="py-4 px-6">Deleted At</th>
+                <th className="py-4 px-6 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
+              {filteredVariantPresets.map(vp => {
+                const isSelected = selectedIds.includes(vp.id);
+                return (
+                  <tr key={vp.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
+                    <td className="py-4 px-6">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(vp.id)}
+                        className="h-4.5 w-4.5 rounded-md border-gray-300 text-[#e94560] focus:ring-[#e94560] cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-150 dark:border-gray-800 flex-shrink-0 flex items-center justify-center">
+                          <Layers className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <p className="font-bold text-gray-900 dark:text-white">{vp.name}</p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-gray-500 dark:text-gray-400 capitalize">{vp.attribute}</td>
+                    <td className="py-4 px-6 text-gray-500 dark:text-gray-400">{vp.values?.length || 0}</td>
+                    <td suppressHydrationWarning={true} className="py-4 px-6 text-gray-500 dark:text-gray-400 text-xs">
+                      {vp.deletedAt ? new Date(vp.deletedAt).toLocaleString() : 'N/A'}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleRestore(vp.id, 'variant_presets')}
+                          disabled={isPending}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({ id: vp.id, type: 'variant_presets', name: vp.name })}
+                          disabled={isPending}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete Forever
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Search and Tab header */}
@@ -1720,6 +2095,34 @@ export default function TrashConsole({
               {whatsappSubscribers.length + emailSubscribers.length}
             </span>
           </button>
+          <button
+            onClick={() => handleTabChange('size_guides')}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              activeTab === 'size_guides'
+                ? 'bg-white dark:bg-[#16162a] text-gray-900 dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <Ruler className="h-4 w-4" />
+            Size Guides
+            <span className="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded-full font-bold">
+              {sizeGuides.length}
+            </span>
+          </button>
+          <button
+            onClick={() => handleTabChange('variant_presets')}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              activeTab === 'variant_presets'
+                ? 'bg-white dark:bg-[#16162a] text-gray-900 dark:text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            Variant Presets
+            <span className="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded-full font-bold">
+              {variantPresets.length}
+            </span>
+          </button>
         </div>
 
         {/* Search */}
@@ -1736,6 +2139,8 @@ export default function TrashConsole({
               activeTab === 'orders' ? 'Search by number or customer...' :
               activeTab === 'customers' ? 'Search by name, email or phone...' :
               activeTab === 'media' ? 'Search by filename or title...' :
+              activeTab === 'size_guides' ? 'Search size guides...' :
+              activeTab === 'variant_presets' ? 'Search variant presets...' :
               'Search leads...'
             }
             value={searchTerm}
@@ -1746,7 +2151,7 @@ export default function TrashConsole({
       </div>
 
       {/* Bulk Action / Empty Trash Controls */}
-      {(products.length > 0 || categories.length > 0 || reviews.length > 0 || orders.length > 0 || customers.length > 0 || media.length > 0 || whatsappSubscribers.length > 0 || emailSubscribers.length > 0) && (
+      {(products.length > 0 || categories.length > 0 || reviews.length > 0 || orders.length > 0 || customers.length > 0 || media.length > 0 || whatsappSubscribers.length > 0 || emailSubscribers.length > 0 || sizeGuides.length > 0 || variantPresets.length > 0) && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
           {getActiveTabItems().length > 0 ? (
             <div className="flex items-center gap-3">
@@ -1800,7 +2205,7 @@ export default function TrashConsole({
                 Empty {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Trash
               </button>
             )}
-            {(products.length > 0 || categories.length > 0 || reviews.length > 0 || orders.length > 0 || customers.length > 0 || media.length > 0 || whatsappSubscribers.length > 0 || emailSubscribers.length > 0) && (
+            {(products.length > 0 || categories.length > 0 || reviews.length > 0 || orders.length > 0 || customers.length > 0 || media.length > 0 || whatsappSubscribers.length > 0 || emailSubscribers.length > 0 || sizeGuides.length > 0 || variantPresets.length > 0) && (
               <button
                 type="button"
                 onClick={() => setConfirmEmptyCompleteTrash(true)}
@@ -1824,6 +2229,8 @@ export default function TrashConsole({
         {activeTab === 'customers' && renderCustomerTab()}
         {activeTab === 'media' && renderMediaTab()}
         {activeTab === 'leads' && renderLeadTab()}
+        {activeTab === 'size_guides' && renderSizeGuideTab()}
+        {activeTab === 'variant_presets' && renderVariantPresetTab()}
       </div>
 
       {/* Confirmation modal for single hard delete */}
@@ -1850,7 +2257,7 @@ export default function TrashConsole({
                 type="button"
                 onClick={handleHardDelete}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600! hover:bg-red-700! text-white! shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {isPending && <RefreshCw className="h-4 w-4 animate-spin" />}
                 Delete Forever
@@ -1918,7 +2325,7 @@ export default function TrashConsole({
                 type="button"
                 onClick={handleEmptyTab}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-[#e94560] hover:bg-[#e94560]/95 text-white shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600! hover:bg-red-700! text-white! shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {isPending && <RefreshCw className="h-4 w-4 animate-spin" />}
                 Empty Trash Bin
@@ -1953,7 +2360,7 @@ export default function TrashConsole({
                 type="button"
                 onClick={handleEmptyCompleteTrash}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-700 text-white shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600! hover:bg-red-700! text-white! shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {isPending && <RefreshCw className="h-4 w-4 animate-spin" />}
                 Empty Entire Trash

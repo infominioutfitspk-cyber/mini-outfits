@@ -17,6 +17,7 @@ interface SizeGuideRow {
   image_url?: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 }
 
 const mapSizeGuide = (row: SizeGuideRow): SizeGuide => ({
@@ -25,13 +26,15 @@ const mapSizeGuide = (row: SizeGuideRow): SizeGuide => ({
   chart_data: Array.isArray(row.chart_data) ? row.chart_data : [],
   imageUrl: row.image_url || undefined,
   createdAt: row.created_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at || null
 });
 
 const fetchSizeGuides = async (): Promise<SizeGuide[]> => {
   const { data, error } = await staticSupabase
     .from('size_guides')
     .select('*')
+    .is('deleted_at', null)
     .order('name', { ascending: true });
 
   if (error) throw error;
@@ -106,13 +109,59 @@ export const deleteSizeGuide = async (id: string): Promise<void> => {
     const supabase = await createClient();
     const { error } = await supabase
       .from('size_guides')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) throw error;
     (revalidateTag as any)('size_guides');
   } catch (error) {
     console.error('[sizeGuides] deleteSizeGuide failed:', error);
+    throw error;
+  }
+};
+
+export const getDeletedSizeGuides = async (): Promise<SizeGuide[]> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('size_guides')
+      .select('*')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row: any) => mapSizeGuide(row));
+  } catch (error) {
+    console.error('[sizeGuides] getDeletedSizeGuides failed:', error);
+    return [];
+  }
+};
+
+export const restoreSizeGuide = async (id: string): Promise<void> => {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from('size_guides')
+      .update({ deleted_at: null })
+      .eq('id', id);
+    if (error) throw error;
+    (revalidateTag as any)('size_guides');
+  } catch (error) {
+    console.error('[sizeGuides] restoreSizeGuide failed:', error);
+    throw error;
+  }
+};
+
+export const hardDeleteSizeGuide = async (id: string): Promise<void> => {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from('size_guides')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    (revalidateTag as any)('size_guides');
+  } catch (error) {
+    console.error('[sizeGuides] hardDeleteSizeGuide failed:', error);
     throw error;
   }
 };

@@ -1,24 +1,15 @@
 import { MetadataRoute } from 'next';
-import { headers } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSettings } from '@/lib/services/settings';
+import { getSiteUrl } from '@/lib/site-url-server';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let siteUrl = '';
   try {
     const settings = await getSettings();
-    if (settings?.storeUrl) {
-      siteUrl = settings.storeUrl;
-    }
+    siteUrl = await getSiteUrl(settings);
   } catch (e) {
     console.warn('Failed to load settings in sitemap:', e);
-  }
-
-  if (!siteUrl) {
-    const headersList = await headers();
-    const host = headersList.get('host') || 'zaynahs.pk';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    siteUrl = `${protocol}://${host}`;
   }
 
   // 1. Fetch products and categories

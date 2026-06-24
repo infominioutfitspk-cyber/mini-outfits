@@ -1,3 +1,4 @@
+import { getSiteUrl } from '@/lib/site-url-server';
 import { formatPrice } from '@/lib/utils/whatsapp';
 import { CartItem } from '@/lib/types';
 
@@ -48,14 +49,14 @@ export function renderOrderItemsTable(items: CartItem[], currencySymbol = 'Rs.')
   }).join('');
 }
 
-export function buildVariables(emailType: string, data: Record<string, any>): Record<string, any> {
+export async function buildVariables(emailType: string, data: Record<string, any>): Promise<Record<string, any>> {
   const settings = data.settings || {};
   const currencySymbol = settings.currencySymbol || 'Rs.';
 
   // Start with standard variables
   const vars: Record<string, any> = {
     brand_name: settings.storeName || 'Zaynahs E-Store',
-    site_url: settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk',
+    site_url: await getSiteUrl(settings),
     customer_name: data.customer?.name || data.user?.name || 'Customer',
     customer_email: data.customer?.email || data.user?.email || '',
     contact_email: settings.headerTopBarEmail || settings.smtp_email || '',

@@ -687,6 +687,7 @@ CREATE TABLE IF NOT EXISTS size_guides (
   name TEXT NOT NULL,
   chart_data JSONB NOT NULL DEFAULT '[]',
   image_url TEXT,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1137,6 +1138,7 @@ CREATE TABLE IF NOT EXISTS variant_presets (
   name TEXT NOT NULL,
   attribute TEXT NOT NULL,  -- 'color', 'size', 'material', 'custom'
   values JSONB NOT NULL,    -- [{ "label": "Red", "hex": "#e94560", "imageUrl": null }]
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -1302,6 +1304,8 @@ CREATE INDEX IF NOT EXISTS idx_customers_deleted_at ON customers (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_media_library_deleted_at ON media_library (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_subscribers_deleted_at ON whatsapp_subscribers (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_email_subscribers_deleted_at ON email_subscribers (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_size_guides_deleted_at ON size_guides (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_variant_presets_deleted_at ON variant_presets (deleted_at);
 
 -- Schedule Recycle Bin Daily Cleanup Cron
 CREATE EXTENSION IF NOT EXISTS pg_cron;

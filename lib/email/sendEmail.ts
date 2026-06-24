@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { render } from '@react-email/render';
 import { getSettings } from '@/lib/services/settings';
+import { getSiteUrl } from '@/lib/site-url-server';
 import React from 'react';
 
 interface SendEmailParams {
@@ -53,9 +54,9 @@ export async function sendEmail({
     }
 
     // Dynamic Message-ID Domain Resolution to prevent spam filtering on localhost/invalid domains
+    const siteUrl = await getSiteUrl();
     let emailDomain = 'zaynahs.com';
     try {
-      const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.com';
       if (siteUrl && !siteUrl.includes('localhost') && !siteUrl.includes('127.0.0.1')) {
         const parsed = new URL(siteUrl);
         emailDomain = parsed.hostname.replace('www.', '');

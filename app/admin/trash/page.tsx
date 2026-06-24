@@ -7,6 +7,8 @@ import { getDeletedOrders } from '@/lib/services/orders';
 import { getDeletedCustomers } from '@/lib/services/customers';
 import { getDeletedMedia } from '@/lib/services/media';
 import { getDeletedWhatsAppSubscribers, getDeletedEmailSubscribers } from '@/lib/services/sections';
+import { getDeletedSizeGuides } from '@/lib/services/sizeGuides';
+import { getDeletedVariantPresets } from '@/lib/services/variantPresets';
 
 export const revalidate = 0; // Dynamic server rendering
 
@@ -19,7 +21,9 @@ export default async function AdminTrashPage() {
     customers,
     media,
     whatsappSubscribers,
-    emailSubscribers
+    emailSubscribers,
+    sizeGuides,
+    variantPresets
   ] = await Promise.all([
     getDeletedProducts(),
     getDeletedCategories(),
@@ -28,7 +32,9 @@ export default async function AdminTrashPage() {
     getDeletedCustomers(),
     getDeletedMedia(),
     getDeletedWhatsAppSubscribers(),
-    getDeletedEmailSubscribers()
+    getDeletedEmailSubscribers(),
+    getDeletedSizeGuides(),
+    getDeletedVariantPresets()
   ]);
 
   return (
@@ -42,6 +48,8 @@ export default async function AdminTrashPage() {
         initialMedia={media}
         initialWhatsAppSubscribers={whatsappSubscribers}
         initialEmailSubscribers={emailSubscribers}
+        initialSizeGuides={sizeGuides}
+        initialVariantPresets={variantPresets}
       />
     </Suspense>
   );

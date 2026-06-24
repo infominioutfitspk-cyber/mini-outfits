@@ -31,7 +31,7 @@ export async function sendTemplatedEmail(
     const mergedData = { ...data, settings };
 
     // 4. Build variable mappings
-    const variables = buildVariables(emailType, mergedData);
+    const variables = await buildVariables(emailType, mergedData);
 
     // 5. Pre-render order items table if items are present
     if (data.order?.items) {

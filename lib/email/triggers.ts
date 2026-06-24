@@ -3,6 +3,7 @@ import { getProductById } from '@/lib/services/products';
 import { updateOrderDetails } from '@/lib/services/orders';
 import { sendTemplatedEmail } from './sendTemplatedEmail';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { getSiteUrl } from '@/lib/site-url-server';
 import { CartItem, Order } from '@/lib/types';
 
 // Helper to get admin email
@@ -42,7 +43,7 @@ export async function notifyAdminNewCustomer(user: { name?: string; email: strin
 export async function onPasswordResetRequest(user: { name?: string; email: string }, resetToken: string) {
   try {
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
+    const siteUrl = await getSiteUrl(settings);
     const resetLink = `${siteUrl}/reset-password?token=${resetToken}`;
     
     await sendTemplatedEmail('password_reset', user.email, { 

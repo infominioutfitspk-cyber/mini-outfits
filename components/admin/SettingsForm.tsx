@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Save, Upload, Trash2, Image as ImageIcon, Loader2, Plus, CreditCard, Truck, Edit2, Check, X, Shield, ChevronUp, ChevronDown, ChevronRight, ChevronLeft, Settings, Layout, Navigation, Package, Zap, MessageCircle, Globe, ShoppingBag, HelpCircle, Mail } from 'lucide-react';
-import { StoreSettings, ShippingMethod, PaymentMethod, Category, Product, NavigationItem, SizeGuide, Coupon } from '@/lib/types';
+import { StoreSettings, ShippingMethod, PaymentMethod, Category, Product, NavigationItem, Coupon } from '@/lib/types';
 import { updateSettings } from '@/lib/services/settings';
-import { getSizeGuides, createSizeGuide, updateSizeGuide, deleteSizeGuide } from '@/lib/services/sizeGuides';
 import { getCoupons, createCoupon, updateCoupon, deleteCoupon } from '@/lib/services/coupons';
 import * as CentralIcons from '@/components/common/Icons';
 import { uploadImage } from '@/lib/uploadImage';
@@ -16,13 +15,15 @@ import {
   getShippingMethods,
   createShippingMethod,
   updateShippingMethod,
-  deleteShippingMethod
+  deleteShippingMethod,
+  reorderShippingMethods
 } from '@/lib/services/shipping';
 import {
   getPaymentMethods,
   createPaymentMethod,
   updatePaymentMethod,
-  deletePaymentMethod
+  deletePaymentMethod,
+  reorderPaymentMethods
 } from '@/lib/services/paymentMethods';
 import { toast } from 'sonner';
 import { cleanWhatsAppPhone } from '@/lib/utils/whatsapp';
@@ -37,7 +38,7 @@ import PoliciesTab from './settings/PoliciesTab';
 import FooterTab from './settings/FooterTab';
 import ShippingTab from './settings/ShippingTab';
 import PremiumTab from './settings/PremiumTab';
-import SizeGuidesTab from './settings/SizeGuidesTab';
+
 import CouponsTab from './settings/CouponsTab';
 import PixelsTab from './settings/PixelsTab';
 import AITab from './settings/AITab';
@@ -407,20 +408,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingLists, setLoadingLists] = useState(true);
 
-  // Size Guide States
-  const [sizeGuides, setSizeGuides] = useState<SizeGuide[]>([]);
-  const [selectedGuide, setSelectedGuide] = useState<SizeGuide | null>(null);
-  const [guideName, setGuideName] = useState('');
-  const [guideColumns, setGuideColumns] = useState('Size, Chest, Length, Shoulder');
-  const [guideRows, setGuideRows] = useState<Array<Record<string, string>>>([
-    { 'Size': 'S', 'Chest': '38', 'Length': '26', 'Shoulder': '17' },
-    { 'Size': 'M', 'Chest': '40', 'Length': '27', 'Shoulder': '18' },
-    { 'Size': 'L', 'Chest': '42', 'Length': '28', 'Shoulder': '19' }
-  ]);
-  const [guideImageUrl, setGuideImageUrl] = useState('');
-  const [isUploadingGuideImage, setIsUploadingGuideImage] = useState(false);
-  const [isEditingGuide, setIsEditingGuide] = useState(false);
-
   // New shipping form
   const [newShipName, setNewShipName] = useState('');
   const [newShipCost, setNewShipCost] = useState('');
@@ -445,23 +432,21 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   useEffect(() => {
     async function loadLists() {
       try {
-        const [shipList, payList, catList, prodList, sgList, couponList] = await Promise.all([
+        const [shipList, payList, catList, prodList, couponList] = await Promise.all([
           getShippingMethods(),
           getPaymentMethods(),
           getCategories(),
           getAllProductsAdmin(),
-          getSizeGuides(),
           getCoupons()
         ]);
         setShippingMethods(shipList);
         setPaymentMethods(payList);
         setCategoriesList(catList || []);
         setProductsList(prodList || []);
-        setSizeGuides(sgList || []);
         setCoupons(couponList || []);
       } catch (err) {
         console.error('Failed to load settings lists:', err);
-        toast.error('Failed to load shipping, payment, categories, products, coupons, or size guides lists');
+        toast.error('Failed to load shipping, payment, categories, products, or coupons lists');
       } finally {
         setLoadingLists(false);
         setLoadingCoupons(false);
@@ -604,13 +589,39 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   };
 
+  const handleReorderShipping = async (orderedIds: string[]) => {
+    try {
+      setShippingMethods(prev => {
+        const map = new Map(prev.map(m => [m.id, m]));
+        return orderedIds.map((id, i) => ({ ...map.get(id)!, sortOrder: i }));
+      });
+      await reorderShippingMethods(orderedIds);
+      toast.success('Shipping methods reordered');
+    } catch (err) {
+      toast.error('Failed to reorder shipping methods');
+    }
+  };
+
+  const handleReorderPayment = async (orderedIds: string[]) => {
+    try {
+      setPaymentMethods(prev => {
+        const map = new Map(prev.map(m => [m.id, m]));
+        return orderedIds.map((id, i) => ({ ...map.get(id)!, sortOrder: i }));
+      });
+      await reorderPaymentMethods(orderedIds);
+      toast.success('Payment methods reordered');
+    } catch (err) {
+      toast.error('Failed to reorder payment methods');
+    }
+  };
+
   // Uploading states
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingExitIntent, setUploadingExitIntent] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon' | 'banner' | 'exit_intent') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -619,7 +630,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
       if (type === 'favicon') setUploadingFavicon(true);
       if (type === 'banner') setUploadingBanner(true);
       if (type === 'exit_intent') setUploadingExitIntent(true);
-      if (type === 'size_chart') setIsUploadingGuideImage(true);
 
       const url = await uploadImage(file, 'product-images');
 
@@ -627,7 +637,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
       if (type === 'favicon') setFaviconUrl(url);
       if (type === 'banner') setBannerUrl(url);
       if (type === 'exit_intent') setExitIntentImageUrl(url);
-      if (type === 'size_chart') setGuideImageUrl(url);
 
       toast.success(`${type.toUpperCase().replace('_', ' ')} uploaded and optimized successfully!`);
     } catch (err) {
@@ -639,102 +648,15 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
       if (type === 'favicon') setUploadingFavicon(false);
       if (type === 'banner') setUploadingBanner(false);
       if (type === 'exit_intent') setUploadingExitIntent(false);
-      if (type === 'size_chart') setIsUploadingGuideImage(false);
     }
   };
 
-  const handleRemoveImage = (type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => {
+  const handleRemoveImage = (type: 'logo' | 'favicon' | 'banner' | 'exit_intent') => {
     if (type === 'logo') setLogoUrl('');
     if (type === 'favicon') setFaviconUrl('');
     if (type === 'banner') setBannerUrl('');
     if (type === 'exit_intent') setExitIntentImageUrl('');
-    if (type === 'size_chart') setGuideImageUrl('');
     toast.success(`${type.toUpperCase().replace('_', ' ')} reference removed`);
-  };
-
-  // Size Guide CRUD Actions
-  const handleSaveSizeGuide = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!guideName.trim()) return toast.error('Size Guide Name is required');
-
-    // Filter and validate columns
-    const cols = guideColumns.split(',').map(s => s.trim()).filter(Boolean);
-    if (cols.length === 0) return toast.error('At least one column header is required');
-
-    // Make sure guideRows entries only have active columns
-    const sanitizedRows = guideRows.map(row => {
-      const sanitized: Record<string, string> = {};
-      cols.forEach(col => {
-        sanitized[col] = row[col] || '';
-      });
-      return sanitized;
-    });
-
-    try {
-      if (selectedGuide) {
-        // Edit Mode
-        const updated = await updateSizeGuide(selectedGuide.id, {
-          name: guideName.trim(),
-          chart_data: sanitizedRows,
-          imageUrl: guideImageUrl || undefined
-        });
-        setSizeGuides(prev => prev.map(item => item.id === selectedGuide.id ? updated : item));
-        toast.success('Size Guide updated successfully!');
-      } else {
-        // Create Mode
-        const created = await createSizeGuide({
-          name: guideName.trim(),
-          chart_data: sanitizedRows,
-          imageUrl: guideImageUrl || undefined
-        });
-        setSizeGuides(prev => [...prev, created]);
-        toast.success('Size Guide created successfully!');
-      }
-      resetSizeGuideForm();
-    } catch (err) {
-      console.error('Failed to save size guide:', err);
-      toast.error('Failed to save size guide');
-    }
-  };
-
-  const startEditSizeGuide = (guide: SizeGuide) => {
-    setSelectedGuide(guide);
-    setGuideName(guide.name);
-
-    // Extract headers (columns) from first row, or fallback
-    const cols = guide.chart_data.length > 0 ? Object.keys(guide.chart_data[0]) : ['Size', 'Chest', 'Length', 'Shoulder'];
-    setGuideColumns(cols.join(', '));
-    setGuideRows(guide.chart_data);
-    setGuideImageUrl(guide.imageUrl || '');
-    setIsEditingGuide(true);
-  };
-
-  const handleDeleteSizeGuide = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this size guide preset? This will unlink it from any products.')) return;
-    try {
-      await deleteSizeGuide(id);
-      setSizeGuides(prev => prev.filter(item => item.id !== id));
-      if (selectedGuide?.id === id) {
-        resetSizeGuideForm();
-      }
-      toast.success('Size guide preset deleted');
-    } catch (err) {
-      console.error('Failed to delete size guide:', err);
-      toast.error('Failed to delete size guide');
-    }
-  };
-
-  const resetSizeGuideForm = () => {
-    setSelectedGuide(null);
-    setGuideName('');
-    setGuideColumns('Size, Chest, Length, Shoulder');
-    setGuideRows([
-      { 'Size': 'S', 'Chest': '38', 'Length': '26', 'Shoulder': '17' },
-      { 'Size': 'M', 'Chest': '40', 'Length': '27', 'Shoulder': '18' },
-      { 'Size': 'L', 'Chest': '42', 'Length': '28', 'Shoulder': '19' }
-    ]);
-    setGuideImageUrl('');
-    setIsEditingGuide(false);
   };
 
   // Coupon Handlers
@@ -1328,7 +1250,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     { id: 'footer', label: 'Footer & Social', icon: Globe },
     { id: 'shipping', label: 'Shipping & Pay', icon: ShoppingBag },
     { id: 'premium', label: 'Premium Features', icon: Zap },
-    { id: 'size_guides', label: 'Size Guides', icon: CentralIcons.Ruler },
     { id: 'coupons', label: 'Coupons', icon: CreditCard },
     { id: 'pixels', label: 'Pixels & SEO', icon: Globe },
     { id: 'ai_settings', label: 'AI Settings', icon: Zap },
@@ -1337,6 +1258,16 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
   ] as const;
   type TabId = typeof TABS[number]['id'];
   const [activeTab, setActiveTab] = useAdminTab<TabId>('general');
+
+  // Redirect deprecated size_guides tab to general
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'size_guides') {
+        router.replace('/admin/settings', { scroll: false });
+      }
+    }
+  }, [router]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl pb-16">
@@ -1739,6 +1670,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           startEditPayment={startEditPayment}
           handleSavePaymentEdit={handleSavePaymentEdit}
           handleDeletePayment={handleDeletePayment}
+          onReorderShipping={handleReorderShipping}
+          onReorderPayment={handleReorderPayment}
         />
       )}
 
@@ -1847,28 +1780,6 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           setEnableTicker={setEnableTicker}
           tickerText={tickerText}
           setTickerText={setTickerText}
-          handleRemoveImage={handleRemoveImage}
-        />
-      )}
-
-      {/* ====== TAB: SIZE GUIDES ====== */}
-      {activeTab === 'size_guides' && (
-        <SizeGuidesTab
-          sizeGuides={sizeGuides}
-          selectedGuide={selectedGuide}
-          guideName={guideName}
-          setGuideName={setGuideName}
-          guideImageUrl={guideImageUrl}
-          setGuideImageUrl={setGuideImageUrl}
-          guideColumns={guideColumns}
-          setGuideColumns={setGuideColumns}
-          guideRows={guideRows}
-          setGuideRows={setGuideRows}
-          isEditingGuide={isEditingGuide}
-          startEditSizeGuide={startEditSizeGuide}
-          handleDeleteSizeGuide={handleDeleteSizeGuide}
-          handleSaveSizeGuide={handleSaveSizeGuide}
-          resetSizeGuideForm={resetSizeGuideForm}
           handleRemoveImage={handleRemoveImage}
         />
       )}

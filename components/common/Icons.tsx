@@ -52,6 +52,7 @@ export {
   ArrowUpRight,
   ShoppingBag,
   ArrowRight,
+  Link,
   Eye,
   EyeOff,
   Home,

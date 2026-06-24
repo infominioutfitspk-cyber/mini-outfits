@@ -16,14 +16,16 @@ import {
 export const revalidate = 0; // Don't cache admin pages
 
 export default async function SEODashboard() {
-  // 1. Fetch counts
+  // 1. Fetch counts (exclude soft-deleted)
   const { count: totalProducts } = await supabaseAdmin
     .from('products')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .is('deleted_at', null);
 
   const { count: totalCategories } = await supabaseAdmin
     .from('categories')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .is('deleted_at', null);
 
   const { data: seoMetas } = await supabaseAdmin
     .from('seo_meta')
@@ -32,18 +34,25 @@ export default async function SEODashboard() {
   const pTotal = totalProducts || 0;
   const cTotal = totalCategories || 0;
 
-  const pOptimized = seoMetas?.filter(m => m.entity_type === 'product' && m.is_optimized).length || 0;
-  const cOptimized = seoMetas?.filter(m => m.entity_type === 'category' && m.is_optimized).length || 0;
+  // Clamp optimized counts to total — prevents >100% from orphaned seo_meta rows
+  const pOptimized = Math.min(
+    seoMetas?.filter(m => m.entity_type === 'product' && m.is_optimized).length || 0,
+    pTotal
+  );
+  const cOptimized = Math.min(
+    seoMetas?.filter(m => m.entity_type === 'category' && m.is_optimized).length || 0,
+    cTotal
+  );
 
   const pPending = Math.max(0, pTotal - pOptimized);
   const cPending = Math.max(0, cTotal - cOptimized);
 
-  const pPct = pTotal > 0 ? Math.round((pOptimized / pTotal) * 100) : 0;
-  const cPct = cTotal > 0 ? Math.round((cOptimized / cTotal) * 100) : 0;
+  const pPct = pTotal > 0 ? Math.min(Math.round((pOptimized / pTotal) * 100), 100) : 0;
+  const cPct = cTotal > 0 ? Math.min(Math.round((cOptimized / cTotal) * 100), 100) : 0;
 
   const totalSEO = pOptimized + cOptimized;
   const totalItems = pTotal + cTotal;
-  const overallPct = totalItems > 0 ? Math.round((totalSEO / totalItems) * 100) : 0;
+  const overallPct = totalItems > 0 ? Math.min(Math.round((totalSEO / totalItems) * 100), 100) : 0;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">

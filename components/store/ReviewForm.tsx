@@ -14,6 +14,7 @@ interface ReviewFormProps {
 export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,12 +32,18 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
       return;
     }
 
+    if (!customerPhone.trim() && !customerEmail.trim()) {
+      toast.error('Please provide a phone number or email so we can contact you if needed');
+      return;
+    }
+
     try {
       setSubmitting(true);
       await submitReview({
         productId,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim() || undefined,
+        customerEmail: customerEmail.trim() || undefined,
         rating,
         comment: comment.trim() || undefined
       });
@@ -46,6 +53,7 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
       // Reset form
       setCustomerName('');
       setCustomerPhone('');
+      setCustomerEmail('');
       setRating(5);
       setComment('');
 
@@ -80,7 +88,7 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Name */}
-        <div>
+        <div className="md:col-span-2">
           <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
             Your Name <span className="text-red-500">*</span>
           </label>
@@ -97,13 +105,29 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
         {/* Phone */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
-            Phone Number (Optional)
+            Phone Number <span className="text-red-500">*</span>
+            <span className="text-gray-400 font-normal normal-case ml-1">(Email or Phone)</span>
           </label>
           <input
             type="tel"
             placeholder="e.g. 03001234567"
             value={customerPhone}
             onChange={(e) => setCustomerPhone(e.target.value)}
+            className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
+          />
+        </div>
+
+        {/* Email */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+            Email Address <span className="text-red-500">*</span>
+            <span className="text-gray-400 font-normal normal-case ml-1">(Email or Phone)</span>
+          </label>
+          <input
+            type="email"
+            placeholder="e.g. you@example.com"
+            value={customerEmail}
+            onChange={(e) => setCustomerEmail(e.target.value)}
             className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
           />
         </div>
@@ -120,6 +144,11 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
           className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all resize-none"
         />
       </div>
+
+      {/* Privacy Notice */}
+      <p className="text-xs text-gray-400">
+        Your contact details will only be used to follow up on your review if needed. We will not share them or use them for marketing.
+      </p>
 
       {/* Submit */}
       <button

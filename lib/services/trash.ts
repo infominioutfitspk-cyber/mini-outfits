@@ -248,3 +248,31 @@ export async function bulkHardDeleteLeads(whatsappIds: string[], emailIds: strin
     throw error;
   }
 }
+
+// Size Guides bulk
+export async function bulkRestoreSizeGuides(ids: string[]): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('size_guides').update({ deleted_at: null }).in('id', ids);
+  if (error) throw error;
+  (revalidateTag as any)('size_guides');
+}
+
+export async function bulkHardDeleteSizeGuides(ids: string[]): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('size_guides').delete().in('id', ids);
+  if (error) throw error;
+  (revalidateTag as any)('size_guides');
+}
+
+// Variant Presets bulk
+export async function bulkRestoreVariantPresets(ids: string[]): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('variant_presets').update({ deleted_at: null }).in('id', ids);
+  if (error) throw error;
+}
+
+export async function bulkHardDeleteVariantPresets(ids: string[]): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('variant_presets').delete().in('id', ids);
+  if (error) throw error;
+}

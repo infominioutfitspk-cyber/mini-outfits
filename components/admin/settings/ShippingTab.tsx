@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Truck, CreditCard, Loader2, Plus, Edit2, Trash2, Check, X } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Truck, CreditCard, Loader2, Plus, Edit2, Trash2, Check, X, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { ShippingMethod, PaymentMethod } from '@/lib/types';
 
 interface ShippingTabProps {
@@ -56,6 +56,10 @@ interface ShippingTabProps {
   startEditPayment: (method: PaymentMethod) => void;
   handleSavePaymentEdit: (id: string) => void;
   handleDeletePayment: (id: string) => void;
+
+  // Reorder Handlers
+  onReorderShipping: (orderedIds: string[]) => void;
+  onReorderPayment: (orderedIds: string[]) => void;
 }
 
 export default function ShippingTab({
@@ -99,8 +103,42 @@ export default function ShippingTab({
   handleTogglePaymentActive,
   startEditPayment,
   handleSavePaymentEdit,
-  handleDeletePayment
+  handleDeletePayment,
+  onReorderShipping,
+  onReorderPayment
 }: ShippingTabProps) {
+  const dragItem = useRef<string | null>(null);
+  const dragOverItem = useRef<string | null>(null);
+
+  const handleDragStart = (id: string) => { dragItem.current = id; };
+  const handleDragOver = (id: string) => { dragOverItem.current = id; };
+  const handleDrop = (list: 'shipping' | 'payment') => {
+    const items = list === 'shipping' ? shippingMethods : paymentMethods;
+    const dragIdx = items.findIndex(m => m.id === dragItem.current);
+    const dropIdx = items.findIndex(m => m.id === dragOverItem.current);
+    if (dragIdx === -1 || dropIdx === -1 || dragIdx === dropIdx) return;
+    const reordered = [...items];
+    const [removed] = reordered.splice(dragIdx, 1);
+    reordered.splice(dropIdx, 0, removed);
+    const ids = reordered.map(m => m.id);
+    if (list === 'shipping') onReorderShipping(ids);
+    else onReorderPayment(ids);
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
+  const handleMove = (list: 'shipping' | 'payment', index: number, direction: 'up' | 'down') => {
+    const items = list === 'shipping' ? shippingMethods : paymentMethods;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= items.length) return;
+    const reordered = [...items];
+    const [removed] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, removed);
+    const ids = reordered.map(m => m.id);
+    if (list === 'shipping') onReorderShipping(ids);
+    else onReorderPayment(ids);
+  };
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -119,9 +157,16 @@ export default function ShippingTab({
           ) : (
             <div className="space-y-4">
               {/* List */}
-              <div className="space-y-3">
-                {shippingMethods.map((method) => (
-                  <div key={method.id} className="p-3 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-[#0f0f1b]/30 flex items-center justify-between gap-3 text-sm">
+              <div className="space-y-2">
+                {shippingMethods.map((method, idx) => (
+                  <div
+                    key={method.id}
+                    draggable={editingShipId !== method.id}
+                    onDragStart={() => handleDragStart(method.id)}
+                    onDragOver={(e) => { e.preventDefault(); handleDragOver(method.id); }}
+                    onDrop={(e) => { e.preventDefault(); handleDrop('shipping'); }}
+                    className={`p-3 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-[#0f0f1b]/30 flex items-center justify-between gap-2 text-sm transition-shadow ${dragOverItem.current === method.id ? 'ring-2 ring-[#e94560]' : ''}`}
+                  >
                     {editingShipId === method.id ? (
                       /* Editing Row */
                       <div className="flex-1 space-y-2">
@@ -168,6 +213,30 @@ export default function ShippingTab({
                     ) : (
                       /* Display Row */
                       <>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleMove('shipping', idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-grab active:cursor-grabbing touch-none"
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMove('shipping', idx, 'down')}
+                            disabled={idx === shippingMethods.length - 1}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-gray-800 dark:text-gray-200 truncate">{method.name}</div>
                           <div className="text-xs text-gray-400 dark:text-gray-500 font-semibold mt-0.5">
@@ -263,9 +332,16 @@ export default function ShippingTab({
           ) : (
             <div className="space-y-4">
               {/* List */}
-              <div className="space-y-3">
-                {paymentMethods.map((method) => (
-                  <div key={method.id} className="p-3 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-[#0f0f1b]/30 flex items-center justify-between gap-3 text-sm">
+              <div className="space-y-2">
+                {paymentMethods.map((method, idx) => (
+                  <div
+                    key={method.id}
+                    draggable={editingPayId !== method.id}
+                    onDragStart={() => handleDragStart(method.id)}
+                    onDragOver={(e) => { e.preventDefault(); handleDragOver(method.id); }}
+                    onDrop={(e) => { e.preventDefault(); handleDrop('payment'); }}
+                    className={`p-3 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-[#0f0f1b]/30 flex items-center justify-between gap-2 text-sm transition-shadow ${dragOverItem.current === method.id ? 'ring-2 ring-[#e94560]' : ''}`}
+                  >
                     {editingPayId === method.id ? (
                       /* Editing Row */
                       <div className="flex-1 space-y-2">
@@ -321,6 +397,30 @@ export default function ShippingTab({
                     ) : (
                       /* Display Row */
                       <>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleMove('payment', idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-grab active:cursor-grabbing touch-none"
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMove('payment', idx, 'down')}
+                            disabled={idx === paymentMethods.length - 1}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-gray-800 dark:text-gray-200 truncate">{method.name}</div>
                           <div className="text-xs text-gray-400 dark:text-gray-500 font-semibold mt-0.5 uppercase">

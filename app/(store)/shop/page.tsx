@@ -16,7 +16,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   try {
     const { category: categorySlug } = await searchParams;
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
+    const siteUrl = settings?.storeUrl?.replace(/\/+$/, '') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     
     const brandName = settings.storeName || 'Zaynahs E-Store';
     let title = `Shop Products | ${brandName}`;

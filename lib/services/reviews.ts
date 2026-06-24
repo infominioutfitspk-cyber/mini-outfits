@@ -13,26 +13,32 @@ const staticSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
 
 interface DBReview {
   id: string;
-  product_id: string;
+  product_id?: string | null;
   customer_name: string;
   customer_phone?: string | null;
+  customer_email?: string | null;
   rating: number;
   comment?: string | null;
   approved: boolean;
   hidden: boolean;
+  is_manual?: boolean;
+  screenshot_url?: string | null;
   deleted_at?: string | null;
   created_at: string;
 }
 
 const mapReview = (row: DBReview): Review => ({
   id: row.id,
-  productId: row.product_id,
+  productId: row.product_id ?? undefined,
   customerName: row.customer_name,
   customerPhone: row.customer_phone || undefined,
+  customerEmail: row.customer_email || undefined,
   rating: row.rating,
   comment: row.comment || undefined,
   approved: row.approved ?? false,
   hidden: row.hidden ?? false,
+  isManual: row.is_manual ?? false,
+  screenshotUrl: row.screenshot_url || undefined,
   deletedAt: row.deleted_at || undefined,
   createdAt: row.created_at
 });
@@ -68,21 +74,49 @@ export const getProductReviews = async (productId: string): Promise<Review[]> =>
 };
 
 // 2. Fetch all reviews (admin)
-export const getAllReviews = async (): Promise<(Review & { productName?: string })[]> => {
+export const getAllReviews = async (): Promise<(Review & { productName?: string; productImage?: string; productSlug?: string })[]> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('reviews')
-      .select('*, products(name)')
+      .select('*')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
     
-    return (data ?? []).map(row => ({
-      ...mapReview(row),
-      productName: row.products?.name
-    }));
+    const reviews = (data ?? []).map((row: any) => mapReview(row));
+
+    // Batch fetch product names, slugs, and images
+    const productIds = reviews.map(r => r.productId).filter(Boolean) as string[];
+    if (productIds.length > 0) {
+      const [productResult, imageResult] = await Promise.all([
+        supabaseAdmin.from('products').select('id, name, slug').in('id', productIds),
+        supabaseAdmin.from('product_images').select('product_id, url, is_primary').in('product_id', productIds),
+      ]);
+      const productMap: Record<string, { name: string; slug: string }> = {};
+      if (productResult.data) {
+        for (const p of productResult.data) {
+          productMap[p.id] = { name: p.name, slug: p.slug };
+        }
+      }
+      const imageMap: Record<string, string> = {};
+      if (imageResult.data) {
+        for (const img of imageResult.data) {
+          if (!imageMap[img.product_id] || img.is_primary) {
+            imageMap[img.product_id] = img.url;
+          }
+        }
+      }
+      return reviews.map(r => ({
+        ...r,
+        productName: r.productId ? productMap[r.productId]?.name : undefined,
+        productSlug: r.productId ? productMap[r.productId]?.slug : undefined,
+        productImage: r.productId ? imageMap[r.productId] : undefined,
+      }));
+    }
+
+    return reviews as any;
   } catch (error) {
     console.error('[reviews] getAllReviews failed:', error);
     throw error;
@@ -94,6 +128,7 @@ export const submitReview = async (review: {
   productId: string;
   customerName: string;
   customerPhone?: string;
+  customerEmail?: string;
   rating: number;
   comment?: string;
  }): Promise<Review> => {
@@ -104,6 +139,7 @@ export const submitReview = async (review: {
         product_id: review.productId,
         customer_name: review.customerName,
         customer_phone: review.customerPhone || null,
+        customer_email: review.customerEmail || null,
         rating: review.rating,
         comment: review.comment || null,
         approved: false
@@ -244,7 +280,7 @@ const fetchTopReviews = async (limit: number = 8): Promise<(Review & { productNa
   try {
     const { data, error } = await staticSupabase
       .from('reviews')
-      .select('*, products(name, slug)')
+      .select('*')
       .eq('approved', true)
       .eq('hidden', false)
       .gte('rating', 4)
@@ -253,11 +289,28 @@ const fetchTopReviews = async (limit: number = 8): Promise<(Review & { productNa
       .limit(limit);
 
     if (error) throw error;
-    return (data ?? []).map((row: any) => ({
-      ...mapReview(row),
-      productName: row.products?.name || undefined,
-      productSlug: row.products?.slug || undefined
-    }));
+    const reviews = (data ?? []).map((row: any) => mapReview(row));
+
+    const productIds = reviews.map(r => r.productId).filter(Boolean) as string[];
+    if (productIds.length > 0) {
+      const { data: products } = await supabaseAdmin
+        .from('products')
+        .select('id, name, slug')
+        .in('id', productIds);
+      const productMap: Record<string, { name: string; slug: string }> = {};
+      if (products) {
+        for (const p of products) {
+          productMap[p.id] = { name: p.name, slug: p.slug };
+        }
+      }
+      return reviews.map(r => ({
+        ...r,
+        productName: r.productId ? productMap[r.productId]?.name : undefined,
+        productSlug: r.productId ? productMap[r.productId]?.slug : undefined,
+      }));
+    }
+
+    return reviews as any;
   } catch (error) {
     console.error('[reviews] fetchTopReviews failed, returning empty fallback list:', error);
     return [];
@@ -279,15 +332,32 @@ export const getDeletedReviews = async (): Promise<(Review & { productName?: str
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('reviews')
-      .select('*, products(name)')
+      .select('*')
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
 
     if (error) throw error;
-    return (data ?? []).map(row => ({
-      ...mapReview(row),
-      productName: row.products?.name
-    }));
+    const reviews = (data ?? []).map((row: any) => mapReview(row));
+
+    const productIds = reviews.map(r => r.productId).filter(Boolean) as string[];
+    if (productIds.length > 0) {
+      const { data: products } = await supabaseAdmin
+        .from('products')
+        .select('id, name')
+        .in('id', productIds);
+      const productMap: Record<string, { name: string }> = {};
+      if (products) {
+        for (const p of products) {
+          productMap[p.id] = { name: p.name };
+        }
+      }
+      return reviews.map(r => ({
+        ...r,
+        productName: r.productId ? productMap[r.productId]?.name : undefined,
+      }));
+    }
+
+    return reviews as any;
   } catch (error) {
     console.error('[reviews] getDeletedReviews failed:', error);
     throw error;
@@ -326,6 +396,152 @@ export const hardDeleteReview = async (id: string): Promise<void> => {
     (revalidateTag as any)('products');
   } catch (error) {
     console.error('[reviews] hardDeleteReview failed:', error);
+    throw error;
+  }
+};
+
+// 9. Fetch global reviews for the /reviews storefront page
+export interface GlobalReviewFilters {
+  search?: string;
+  rating?: number;
+  sort?: 'newest' | 'oldest' | 'highest' | 'lowest';
+  page?: number;
+  limit?: number;
+}
+
+export const getGlobalReviews = async (filters: GlobalReviewFilters = {}): Promise<{
+  reviews: (Review & { productName?: string; productImage?: string; productSlug?: string })[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> => {
+  const page = filters.page || 1;
+  const limit = Math.min(filters.limit || 20, 50);
+  const offset = (page - 1) * limit;
+
+  try {
+    let searchProductIds: string[] | undefined;
+    if (filters.search?.trim()) {
+      const { data: matchedProducts } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .ilike('name', `%${filters.search.trim()}%`);
+      searchProductIds = (matchedProducts ?? []).map(p => p.id);
+    }
+
+    let query = supabaseAdmin
+      .from('reviews')
+      .select('*', { count: 'exact' })
+      .eq('approved', true)
+      .eq('hidden', false)
+      .is('deleted_at', null);
+
+    if (filters.search?.trim()) {
+      if (searchProductIds && searchProductIds.length > 0) {
+        query = query.in('product_id', searchProductIds);
+      } else {
+        return { reviews: [], total: 0, page, totalPages: 0 };
+      }
+    }
+
+    if (filters.rating && filters.rating > 0) {
+      query = query.eq('rating', filters.rating);
+    }
+
+    switch (filters.sort) {
+      case 'oldest': query = query.order('created_at', { ascending: true }); break;
+      case 'highest': query = query.order('rating', { ascending: false }).order('created_at', { ascending: false }); break;
+      case 'lowest': query = query.order('rating', { ascending: true }).order('created_at', { ascending: false }); break;
+      default: query = query.order('created_at', { ascending: false });
+    }
+
+    const { data, error, count } = await query.range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    const reviews = (data ?? []).map((row: any) => mapReview(row));
+
+    // Batch fetch product names, slugs, and images
+    const productIds = reviews.map(r => r.productId).filter(Boolean) as string[];
+    if (productIds.length > 0) {
+      const [productResult, imageResult] = await Promise.all([
+        supabaseAdmin.from('products').select('id, name, slug').in('id', productIds),
+        supabaseAdmin.from('product_images').select('product_id, url, is_primary').in('product_id', productIds),
+      ]);
+      const productMap: Record<string, { name: string; slug: string }> = {};
+      if (productResult.data) {
+        for (const p of productResult.data) {
+          productMap[p.id] = { name: p.name, slug: p.slug };
+        }
+      }
+      const imageMap: Record<string, string> = {};
+      if (imageResult.data) {
+        for (const img of imageResult.data) {
+          if (!imageMap[img.product_id] || img.is_primary) {
+            imageMap[img.product_id] = img.url;
+          }
+        }
+      }
+      return {
+        reviews: reviews.map(r => ({
+          ...r,
+          productName: r.productId ? productMap[r.productId]?.name : undefined,
+          productSlug: r.productId ? productMap[r.productId]?.slug : undefined,
+          productImage: r.productId ? imageMap[r.productId] : undefined,
+        })),
+        total: count ?? 0,
+        page,
+        totalPages: Math.ceil((count ?? 0) / limit)
+      };
+    }
+
+    return {
+      reviews: reviews as any,
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit)
+    };
+  } catch (error) {
+    console.error('[reviews] getGlobalReviews failed:', error);
+    return { reviews: [], total: 0, page, totalPages: 0 };
+  }
+};
+
+// 10. Submit an admin custom review (with optional screenshot)
+export const submitAdminCustomReview = async (review: {
+  productId?: string | null;
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  rating: number;
+  comment?: string;
+  screenshotUrl?: string;
+}): Promise<Review> => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('reviews')
+      .insert({
+        product_id: review.productId || null,
+        customer_name: review.customerName,
+        customer_phone: review.customerPhone || null,
+        customer_email: review.customerEmail || null,
+        rating: review.rating,
+        comment: review.comment || null,
+        screenshot_url: review.screenshotUrl || null,
+        is_manual: true,
+        approved: true
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    (revalidateTag as any)('reviews');
+    (revalidateTag as any)('products');
+
+    return mapReview(data);
+  } catch (error) {
+    console.error('[reviews] submitAdminCustomReview failed:', error);
     throw error;
   }
 };

@@ -54,6 +54,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
       toast.success('Orders refreshed');
     }, 1000);
   };
+  // Realtime subscription for orders
 
   const orderStats = {
     total: orders.length,
@@ -62,7 +63,6 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
     revenue: orders.filter(o => o.status !== 'cancelled' && o.status !== 'refunded').reduce((sum, o) => sum + o.total, 0),
   };
 
-  // Realtime subscription for orders
   useEffect(() => {
     const supabase = createClient();
     
@@ -120,7 +120,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('today');
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);

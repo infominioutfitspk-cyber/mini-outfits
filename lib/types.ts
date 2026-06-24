@@ -426,6 +426,7 @@ export interface SizeGuide {
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string | null;
 }
 
 export interface HomepageSection {
@@ -522,15 +523,31 @@ export interface Order {
 
 export interface Review {
   id: string;
-  productId: string;
+  productId?: string | null;
   customerName: string;
   customerPhone?: string;
+  customerEmail?: string;
   rating: number;
   comment?: string;
   approved: boolean;
   hidden?: boolean;
+  isManual?: boolean;
+  screenshotUrl?: string;
   deletedAt?: string | null;
   createdAt: string;
+}
+
+export interface SocialProof {
+  id: string;
+  imageUrl: string;
+  caption?: string;
+  sourceType: 'whatsapp' | 'instagram' | 'facebook' | 'manual';
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  deletedAt?: string | null;
+  productIds?: string[];
+  linkedProducts?: { id: string; name: string; slug?: string; image?: string }[];
 }
 
 export interface ShippingMethod {
@@ -539,6 +556,7 @@ export interface ShippingMethod {
   cost: number;
   estimatedDays?: string;
   active: boolean;
+  sortOrder: number;
   createdAt: string;
 }
 
@@ -548,6 +566,7 @@ export interface PaymentMethod {
   code: string;
   active: boolean;
   instructions?: string;
+  sortOrder: number;
   createdAt: string;
 }
 
@@ -563,6 +582,7 @@ export interface VariantPreset {
   attribute: 'color' | 'size' | 'material' | 'custom';
   values: VariantPresetValue[];
   createdAt: string;
+  deletedAt?: string | null;
 }
 
 export interface Coupon {

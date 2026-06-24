@@ -20,6 +20,7 @@ const outfit = Outfit({
 
 import ThemeStyleRegistry from '@/components/common/ThemeStyleRegistry';
 import { getSettings } from '@/lib/services/settings';
+import { getSiteUrl } from '@/lib/site-url-server';
 import Pixels from '@/components/Pixels';
 import ChunkErrorListener from '@/components/common/ChunkErrorListener';
 
@@ -36,9 +37,9 @@ const getFaviconType = (url: string) => {
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.totvogue.pk';
+    const siteUrl = await getSiteUrl(settings);
 
-    const storeName = settings.storeName || 'TotVogue';
+    const storeName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store';
     const suffix = settings.meta_title_suffix || '';
     const title = settings.metaTitle || storeName;
     const description = settings.metaDescription || settings.tagline || `Welcome to ${storeName}. Premium quality products delivered to your doorstep. Order via WhatsApp.`;

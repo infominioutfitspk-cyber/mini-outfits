@@ -216,15 +216,15 @@ export default function CartContainer({ settings }: CartContainerProps) {
         
         // 1. Fetch shipping
         try {
-          const shipRes = await supabase.from('shipping_methods').select('*').eq('active', true).order('cost', { ascending: true });
+          const shipRes = await supabase.from('shipping_methods').select('*').eq('active', true).order('sort_order', { ascending: true });
           const shipList: ShippingMethod[] = (shipRes.data || []).map((r: any) => ({
             id: r.id, name: r.name, cost: Number(r.cost),
-            estimatedDays: r.estimated_days, active: r.active, createdAt: r.created_at
+            estimatedDays: r.estimated_days, active: r.active, sortOrder: r.sort_order ?? 0, createdAt: r.created_at
           }));
           setShippingMethods(shipList);
           if (shipList.length > 0) setSelectedShippingId(shipList[0].id);
         } catch {
-          const fallback: ShippingMethod = { id: 'fallback', name: 'Standard Delivery', cost: 200, estimatedDays: '3–5 business days', active: true, createdAt: '' };
+          const fallback: ShippingMethod = { id: 'fallback', name: 'Standard Delivery', cost: 200, estimatedDays: '3–5 business days', active: true, sortOrder: 0, createdAt: '' };
           setShippingMethods([fallback]);
           setSelectedShippingId('fallback');
         } finally {
@@ -233,15 +233,15 @@ export default function CartContainer({ settings }: CartContainerProps) {
 
         // 2. Fetch payment
         try {
-          const payRes = await supabase.from('payment_methods').select('*').eq('active', true).order('created_at', { ascending: true });
+          const payRes = await supabase.from('payment_methods').select('*').eq('active', true).order('sort_order', { ascending: true });
           const payList: PaymentMethod[] = (payRes.data || []).map((r: any) => ({
-            id: r.id, name: r.name, code: r.code, active: r.active, instructions: r.instructions, createdAt: r.created_at
+            id: r.id, name: r.name, code: r.code, active: r.active, instructions: r.instructions, sortOrder: r.sort_order ?? 0, createdAt: r.created_at
           }));
           setPaymentMethods(payList);
           if (payList.length > 0) setSelectedPaymentId(payList[0].id);
         } catch (err) {
           console.error('Failed to load payment methods:', err);
-          const fallbackPay: PaymentMethod = { id: 'cod-fallback', name: 'Cash on Delivery', code: 'cod', active: true, createdAt: '' };
+          const fallbackPay: PaymentMethod = { id: 'cod-fallback', name: 'Cash on Delivery', code: 'cod', active: true, sortOrder: 0, createdAt: '' };
           setPaymentMethods([fallbackPay]);
           setSelectedPaymentId('cod-fallback');
         } finally {
@@ -1035,7 +1035,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
               {/* Name grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">First Name *</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">First Name<span className="text-red-500 ml-0.5">*</span></label>
                   <input
                     type="text" required placeholder="Ali"
                     value={firstName} onChange={e => setFirstName(e.target.value)}
@@ -1043,7 +1043,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Last Name *</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Last Name<span className="text-red-500 ml-0.5">*</span></label>
                   <input
                     type="text" required placeholder="Hassan"
                     value={lastName} onChange={e => setLastName(e.target.value)}
@@ -1054,7 +1054,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
 
               {/* Address */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Address *</label>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Address<span className="text-red-500 ml-0.5">*</span></label>
                 <input
                   type="text" required placeholder="Street address, house number"
                   value={address} onChange={e => setAddress(e.target.value)}
@@ -1062,17 +1062,20 @@ export default function CartContainer({ settings }: CartContainerProps) {
                 />
               </div>
 
-              {/* Apartment */}
-              <input
-                type="text" placeholder="Apartment, suite, floor (optional)"
-                value={apartment} onChange={e => setApartment(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
-              />
+              {/* Address Line 2 */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Address Line 2<span className="text-gray-500 ml-1 font-normal normal-case text-[9px]">(Optional)</span></label>
+                <input
+                  type="text" placeholder="Apartment, suite, floor"
+                  value={apartment} onChange={e => setApartment(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:border-[#e94560] focus:bg-white dark:focus:bg-[#16162a] focus:outline-none transition-all"
+                />
+              </div>
 
               {/* City + Postal */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">City *</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">City<span className="text-red-500 ml-0.5">*</span></label>
                   <input
                     type="text" required placeholder="Karachi"
                     value={city} onChange={e => setCity(e.target.value)}
@@ -1080,7 +1083,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Postal Code</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Postal Code<span className="text-gray-500 ml-1 font-normal normal-case text-[9px]">(Optional)</span></label>
                   <input
                     type="text" placeholder="75500"
                     value={postalCode} onChange={e => setPostalCode(e.target.value)}
@@ -1092,7 +1095,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
               {/* Phone */}
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">
-                  WhatsApp / Phone *
+                  WhatsApp / Phone<span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -1108,7 +1111,7 @@ export default function CartContainer({ settings }: CartContainerProps) {
 
               {/* Order notes */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Order Notes (optional)</label>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Order Notes<span className="text-gray-500 ml-1 font-normal normal-case text-[9px]">(Optional)</span></label>
                 <textarea
                   rows={2}
                   placeholder="Special instructions, colour preference, delivery timing..."

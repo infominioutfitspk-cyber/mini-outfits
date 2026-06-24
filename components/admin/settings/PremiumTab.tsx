@@ -111,7 +111,7 @@ interface PremiumTabProps {
   setRecentBuyersShowOnCheckout: (v: boolean) => void;
 
   // Image Upload Handlers
-  handleRemoveImage: (type: 'logo' | 'favicon' | 'banner' | 'exit_intent' | 'size_chart') => void;
+  handleRemoveImage: (type: 'logo' | 'favicon' | 'banner' | 'exit_intent') => void;
 
   // Announcement Bar properties
   headerShowNewsletter: boolean;
