@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useTransition, useMemo, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useCallback, useTransition, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Review, SocialProof } from '@/lib/types';
 import StarRating from '@/components/store/StarRating';
+import ReviewImageZoomModal from '@/components/store/ReviewImageZoomModal';
 import { Search, Star, MessageSquare, Package, Link as LinkIcon, Check, ShoppingBag, MessageCircle } from '@/components/common/Icons';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 interface ReviewsPageClientProps {
@@ -51,8 +50,7 @@ export default function ReviewsPageClient({
   const socialProofs = initialSocialProofs;
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const lightboxImages = socialProofs.map(p => ({ url: p.imageUrl, alt: p.caption || 'Customer feedback' }));
 
   const avgRating = useMemo(() => {
     if (reviews.length === 0) return 0;
@@ -454,72 +452,12 @@ export default function ReviewsPageClient({
     </div>
 
     {/* Lightbox Modal */}
-    {mounted && lightboxIndex !== null && createPortal(
-        <div
-          className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-black/95 animate-fade-in touch-none select-none"
-          onClick={() => setLightboxIndex(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightboxIndex(null)}
-            className="absolute top-4 right-4 z-20 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer shadow-md"
-            aria-label="Close lightbox"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {socialProofs.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => (i! - 1 + socialProofs.length) % socialProofs.length); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-              aria-label="Previous image"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          )}
-
-          <div
-            className="relative w-full max-w-3xl h-[65dvh] md:h-[80dvh] flex items-center justify-center overflow-hidden px-4 md:px-16"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full h-full relative">
-              <Image
-                src={socialProofs[lightboxIndex].imageUrl}
-                alt={socialProofs[lightboxIndex].caption || 'Customer feedback'}
-                fill
-                sizes="90vw"
-                className="object-contain pointer-events-none"
-              />
-            </div>
-          </div>
-
-          {socialProofs.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => (i! + 1) % socialProofs.length); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-              aria-label="Next image"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          )}
-
-          {socialProofs.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-              {socialProofs.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
-                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${i === lightboxIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
+    <ReviewImageZoomModal
+      isOpen={lightboxIndex !== null}
+      images={lightboxImages}
+      initialIndex={lightboxIndex ?? 0}
+      onClose={() => setLightboxIndex(null)}
+    />
     </>
   );
 }
