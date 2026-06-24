@@ -413,7 +413,7 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="font-bold text-[#1a1a2e] dark:text-white truncate text-xs md:text-sm max-w-[100px] md:max-w-none">
+                                <p className="font-bold text-[#1a1a2e] dark:text-white text-xs md:text-sm max-w-[180px] lg:max-w-[400px] line-clamp-1">
                                   {product.name}
                                 </p>
                                 {!product.active && (
@@ -564,7 +564,7 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="text-sm font-black text-[#1a1a2e] dark:text-white truncate flex-1">{product.name}</h3>
+                          <h3 className="text-sm font-black text-[#1a1a2e] dark:text-white truncate flex-1 line-clamp-1 max-w-[250px]">{product.name}</h3>
                           <span className="text-sm font-black text-gray-900 dark:text-white flex-shrink-0">{formatPrice(product.price, settings.currencySymbol)}</span>
                         </div>
                         {product.category && <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">{product.category.name}</p>}
