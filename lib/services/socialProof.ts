@@ -2,7 +2,7 @@
 
 import { SocialProof } from '@/lib/types';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 
 interface DBSocialProof {
   id: string;
@@ -78,6 +78,36 @@ async function attachLinkedProducts(proofs: SocialProof[]): Promise<SocialProof[
     return proofs;
   }
 }
+
+const fetchTopSocialProofs = async (limit: number = 2): Promise<SocialProof[]> => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('social_proof')
+      .select('*')
+      .eq('active', true)
+      .is('deleted_at', null)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    const proofs = (data ?? []).map(mapSocialProof);
+    return attachLinkedProducts(proofs);
+  } catch (error) {
+    console.error('[socialProof] fetchTopSocialProofs failed:', error);
+    return [];
+  }
+};
+
+const cachedTopSocialProofs = unstable_cache(
+  async (limit: number) => fetchTopSocialProofs(limit),
+  ['top-social-proofs-list'],
+  { revalidate: 86400, tags: ['social_proof'] }
+);
+
+export const getTopSocialProofs = async (limit: number = 2): Promise<SocialProof[]> => {
+  return cachedTopSocialProofs(limit);
+};
 
 export const getSocialProofs = async (): Promise<SocialProof[]> => {
   try {

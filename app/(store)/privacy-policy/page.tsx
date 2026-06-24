@@ -4,10 +4,14 @@ import { Metadata } from 'next';
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy | Zaynahs E-Store',
-  description: 'Read our privacy policy to understand how we collect, use, and protect your personal data.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  const storeName = settings.storeName || 'Store';
+  return {
+    title: `Privacy Policy | ${storeName}`,
+    description: `Read our privacy policy to understand how ${storeName} collects, uses, and protects your personal data.`,
+  };
+}
 
 export default async function PrivacyPolicyPage() {
   const settings = await getSettings();
@@ -15,7 +19,7 @@ export default async function PrivacyPolicyPage() {
   
   let supportEmail = settings.headerTopBarEmail;
   if (!supportEmail) {
-    let domain = 'zaynahs.pk';
+    let domain = 'store.com';
     if (settings.storeUrl) {
       try {
         const parsed = new URL(settings.storeUrl);

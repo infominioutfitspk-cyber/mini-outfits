@@ -4,6 +4,7 @@ import { getProducts } from '@/lib/services/products';
 import { getCategories } from '@/lib/services/categories';
 import { getSettings } from '@/lib/services/settings';
 import { getTopReviews } from '@/lib/services/reviews';
+import { getTopSocialProofs } from '@/lib/services/socialProof';
 import { getHomepageSections } from '@/lib/services/sections';
 
 import { getSiteUrl } from '@/lib/site-url-server';
@@ -18,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
     const brandName = settings.storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs E-Store';
     const tagline = settings.tagline || 'Premium Mobile Shop';
-    const banner = settings.bannerUrl || '/og-default.jpg';
+    const banner = settings.bannerUrl || settings.logoUrl || settings.faviconUrl || '';
 
     // Respect custom metaTitle or default to "StoreName - Tagline"
     const title = settings.metaTitle || `${brandName} - ${tagline}`;
@@ -49,11 +50,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CatalogPage() {
-  const [products, categories, settings, reviews, sections] = await Promise.all([
+  const [products, categories, settings, reviews, socialProofs, sections] = await Promise.all([
     getProducts(),
     getCategories(),
     getSettings(),
-    getTopReviews(8),
+    getTopReviews(3),
+    getTopSocialProofs(3),
     getHomepageSections(true)
   ]);
 
@@ -63,6 +65,7 @@ export default async function CatalogPage() {
       categories={categories}
       settings={settings}
       reviews={reviews}
+      socialProofs={socialProofs}
       sections={sections}
     />
   );

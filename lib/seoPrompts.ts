@@ -20,8 +20,8 @@ interface AISettings {
 /**
  * Builds the system prompt for the SEO Copywriter AI agent based on store settings
  */
-export function buildSystemPrompt(settings: AISettings, storeSettings?: any): string {
-  const siteUrl = storeSettings?.store_url || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+export function buildSystemPrompt(settings: AISettings, storeSettings?: any, siteUrl?: string): string {
+  const resolvedUrl = siteUrl || storeSettings?.store_url || process.env.NEXT_PUBLIC_SITE_URL || '';
   const audienceStr = settings.target_audiences ? `\nTarget Audiences: ${settings.target_audiences}` : '';
   const typesStr = settings.product_types ? `\nProduct Types: ${settings.product_types}` : '';
   
@@ -76,7 +76,7 @@ ${customPromptInstructions ? `SPECIFIC WRITING PARAMETERS:${customPromptInstruct
 STRICT SEO & COPYWRITING INSTRUCTIONS:
 1. The Primary Focus Keyword MUST appear in the first sentence of the meta description and long description.
 2. The long description MUST be formatted in rich, informative, engaging markdown-like HTML (using <h2>, <p>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags. Adhere to any length constraints specified above (default to 1000+ words for product descriptions and 150+ words for category descriptions if no limit is set).
-3. Incorporate the store website URL (${siteUrl}) naturally 2-3 times as contextual internal links.
+3. Incorporate the store website URL (${resolvedUrl}) naturally 2-3 times as contextual internal links.
 4. FAQ Schema MUST contain 3-5 relevant questions and answers providing structured information about sizing, materials, delivery, and exchange, utilizing the brand contact and address details if relevant.
 5. You must output ONLY a valid, parseable JSON object fitting the requested schema. Do not output any thinking tags, markdown wrapper blocks (like \`\`\`json), or conversational text. Return only raw JSON.`;
 }

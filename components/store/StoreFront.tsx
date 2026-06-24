@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import { Product, Category, StoreSettings, Review, HomepageSection } from '@/lib/types';
+import { Product, Category, StoreSettings, Review, SocialProof, HomepageSection } from '@/lib/types';
 import CategoryFilter from './CategoryFilter';
 import ProductGrid from './ProductGrid';
 import { useSearchStore } from '@/store/searchStore';
@@ -22,6 +22,7 @@ interface StoreFrontProps {
   categories: Category[];
   settings: StoreSettings;
   reviews?: (Review & { productName?: string; productSlug?: string })[];
+  socialProofs?: SocialProof[];
   sections?: HomepageSection[];
   isPreview?: boolean;
   activeSectionId?: string | null;
@@ -787,6 +788,7 @@ export default function StoreFront({
   categories,
   settings,
   reviews = [],
+  socialProofs = [],
   sections = [],
   isPreview = false,
   activeSectionId = null
@@ -1042,21 +1044,21 @@ export default function StoreFront({
 
   const renderRecentReviews = (section: HomepageSection) => {
     if (!reviews || reviews.length === 0) return null;
-    const limit = section.settings?.limit ?? 3;
-    const displayReviews = reviews.slice(0, limit);
 
-    // Calculate rating stats for approved reviews
     const approvedReviews = reviews.filter(r => r.approved !== false);
     const totalReviewsCount = approvedReviews.length;
     const averageStars = totalReviewsCount > 0 
       ? Math.round((approvedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviewsCount) * 10) / 10
       : 5.0;
 
+    const displayReviews = reviews.slice(0, 3);
+    const displayProofs = socialProofs.slice(0, 3);
+
     return (
       <div key={section.id} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 border-t border-gray-100 dark:border-gray-800">
         <div className="text-center space-y-2.5 mb-10">
           <h2 className="text-xl font-black uppercase tracking-wider text-gray-900 dark:text-white">
-            {section.title || 'What Our Customers Say'}
+            {section.title || 'CUSTOMER REVIEWS'}
           </h2>
           <div className="flex flex-col items-center justify-center gap-1.5">
             <StarRating rating={averageStars} showText={false} starSize={16} />
@@ -1065,39 +1067,101 @@ export default function StoreFront({
             </span>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayReviews.map((review) => (
-            <div
-              key={review.id}
-              className="flex gap-4 p-5 rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-[#16162a] shadow-sm text-gray-900 dark:text-white"
-            >
-              <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white uppercase shadow-sm ${getAvatarColorClass(review.customerName)}`}>
-                {getInitials(review.customerName)}
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center justify-between gap-4">
-                  <StarRating rating={review.rating} showText={false} starSize={12} />
-                  <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500" suppressHydrationWarning>
-                    {formatDate(review.createdAt)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-extrabold text-sm text-gray-950 dark:text-white">
-                    {review.customerName}
-                  </span>
-                  <div className="flex items-center gap-0.5 text-[9px] font-bold text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded-full">
-                    <span>✓ Verified Buyer</span>
+
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Side A: Verified Reviews */}
+            <div className="space-y-4 w-full max-w-sm md:max-w-md mx-auto">
+              {displayReviews.map((review) => (
+                <div
+                  key={review.id}
+                  className="flex gap-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-[#16162a] shadow-sm text-gray-900 dark:text-white"
+                >
+                  <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold text-white uppercase shadow-sm ${getAvatarColorClass(review.customerName)}`}>
+                    {getInitials(review.customerName)}
+                  </div>
+                  <div className="flex-1 space-y-1.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <StarRating rating={review.rating} showText={false} starSize={11} />
+                      <span className="text-[9px] font-semibold text-gray-400 dark:text-gray-500 shrink-0" suppressHydrationWarning>
+                        {formatDate(review.createdAt)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-extrabold text-xs text-gray-950 dark:text-white truncate">
+                        {review.customerName}
+                      </span>
+                      <span className="text-[8px] font-bold text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded-full shrink-0">
+                        ✓ Verified Buyer
+                      </span>
+                    </div>
+                    {review.comment && (
+                      <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                        &ldquo;{review.comment}&rdquo;
+                      </p>
+                    )}
                   </div>
                 </div>
-                {review.comment && (
-                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-semibold">
-                    "{review.comment}"
-                  </p>
-                )}
-              </div>
+              ))}
+              {displayReviews.length === 0 && (
+                <div className="flex items-center justify-center p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-850 bg-white/50 dark:bg-[#16162a]/50 text-gray-400 dark:text-gray-600 text-[11px] font-semibold">
+                  No reviews yet
+                </div>
+              )}
             </div>
-          ))}
+
+            {/* Side B: Social Proofs */}
+            <div className="space-y-4 w-full max-w-sm md:max-w-md mx-auto">
+              {displayProofs.map((proof) => (
+                <div
+                  key={proof.id}
+                  className="flex gap-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-[#16162a] shadow-sm text-gray-900 dark:text-white"
+                >
+                  <div className="w-16 h-16 rounded-xl flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-150 dark:border-gray-700">
+                    <Image
+                      src={proof.imageUrl}
+                      alt="Customer chat screenshot"
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs">💬</span>
+                      <span className="text-[10px] font-extrabold text-gray-900 dark:text-white uppercase tracking-wide">
+                        {proof.sourceType === 'whatsapp' ? 'WhatsApp' : proof.sourceType === 'instagram' ? 'Instagram' : proof.sourceType === 'facebook' ? 'Facebook' : 'Chat'}
+                      </span>
+                    </div>
+                    {proof.caption && (
+                      <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-2">
+                        &ldquo;{proof.caption}&rdquo;
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-[#e94560] bg-[#e94560]/10 px-1.5 py-0.5 rounded-full w-fit">
+                      <span>🏷️</span>
+                      <span className="truncate max-w-[100px]">{proof.linkedProducts?.[0]?.name || 'Customer'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {displayProofs.length === 0 && (
+                <div className="flex items-center justify-center p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-850 bg-white/50 dark:bg-[#16162a]/50 text-gray-400 dark:text-gray-600 text-[11px] font-semibold">
+                  No social proof available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* View All CTA */}
+        <div className="flex justify-center mt-6">
+          <Link
+            href="/reviews"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-[11px] font-semibold tracking-wide shadow-sm bg-[#e94560] text-white hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+          >
+            View All Reviews
+          </Link>
         </div>
       </div>
     );

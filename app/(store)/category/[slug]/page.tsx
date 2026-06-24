@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
     const title = seoMeta?.seo_title || `${category.name} | ${brandName}`;
     const description = seoMeta?.meta_description || category.description || '';
-    const imageUrl = category.image_url || '/og-default.jpg';
+    const imageUrl = category.image_url || settings.logoUrl || settings.faviconUrl || '';
 
     return {
       metadataBase: new URL(siteUrl),

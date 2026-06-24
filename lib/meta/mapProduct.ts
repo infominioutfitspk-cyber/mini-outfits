@@ -1,4 +1,4 @@
-import { getClientSiteUrl } from '@/lib/site-url';
+import { getClientSiteUrl, cleanLocalhostUrls } from '@/lib/site-url';
 import { Product, StoreSettings } from '@/lib/types';
 
 /**
@@ -8,7 +8,7 @@ function cleanDescription(htmlText: string, siteUrl: string): string {
   if (!htmlText) return '';
   
   // 1. Replace localhost links with production domain
-  let text = htmlText.replace(/http:\/\/localhost:3000/g, siteUrl);
+  let text = cleanLocalhostUrls(htmlText, siteUrl);
   
   // 2. Strip HTML tags
   text = text.replace(/<[^>]*>/g, ' ');
@@ -31,7 +31,7 @@ function cleanDescription(htmlText: string, siteUrl: string): string {
  */
 function cleanImageUrl(url: string, siteUrl: string): string {
   if (!url) return '';
-  return url.replace(/http:\/\/localhost:3000/g, siteUrl);
+  return cleanLocalhostUrls(url, siteUrl);
 }
 
 /**

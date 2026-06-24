@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Search } from '@/components/common/Icons';
+import { getClientSiteUrl } from '@/lib/site-url';
 
 interface SEOPreviewModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ export function SEOPreviewModal({ isOpen, onClose, entity_type, entity_name, seo
 
   const siteUrl = storeUrl
     ? storeUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')
-    : (process.env.NEXT_PUBLIC_SITE_URL ? process.env.NEXT_PUBLIC_SITE_URL.replace(/^https?:\/\//i, '').replace(/\/$/, '') : 'zaynahs.pk');
+    : getClientSiteUrl().replace(/^https?:\/\//i, '').replace(/\/$/, '');
 
   const brandName = storeName || process.env.NEXT_PUBLIC_BRAND_NAME || 'Zaynahs';
   const displaySlug = entity_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');

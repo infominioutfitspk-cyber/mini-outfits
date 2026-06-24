@@ -16,12 +16,12 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   try {
     const { category: categorySlug } = await searchParams;
     const settings = await getSettings();
-    const siteUrl = settings?.storeUrl?.replace(/\/+$/, '') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const siteUrl = settings?.storeUrl?.replace(/\/+$/, '') || process.env.NEXT_PUBLIC_SITE_URL || '';
     
     const brandName = settings.storeName || 'Zaynahs E-Store';
     let title = `Shop Products | ${brandName}`;
     let description = settings.tagline || `Browse our collection of premium products. Confirm your orders instantly via WhatsApp.`;
-    let imageUrl = settings.logoUrl || `${siteUrl}/og-default.jpg`;
+    let imageUrl = settings.logoUrl || settings.faviconUrl || '';
     let canonicalUrl = `${siteUrl}/shop`;
 
     if (categorySlug) {

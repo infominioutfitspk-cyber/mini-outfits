@@ -3,6 +3,7 @@ import { getPendingAbandonmentEmails, markAbandonmentEmailSent } from '@/lib/ser
 import { sendEmail } from '@/lib/email/sendEmail';
 import { getSettings } from '@/lib/services/settings';
 import { buildAbandonedCartEmailHTML, buildAbandonedCartEmailText } from '@/lib/email/abandonedCartEmail';
+import { getSiteUrl } from '@/lib/site-url-server';
 
 /**
  * GET /api/cron/abandoned-cart
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const settings = await getSettings();
+    const siteUrl = await getSiteUrl(settings);
 
     // If abandoned cart emails are disabled in settings → skip
     if (settings.abandonedCartEmailEnabled === false) {
@@ -49,7 +51,7 @@ export async function GET(req: NextRequest) {
           currencySymbol: settings.currencySymbol || 'Rs.',
           storeName: settings.storeName || "Zaynah's E-Store",
           storeWhatsapp: settings.whatsappNumber,
-          checkoutUrl: cart.checkoutUrl || `${process.env.NEXT_PUBLIC_SITE_URL}/cart?step=checkout`,
+          checkoutUrl: cart.checkoutUrl || `${siteUrl}/cart?step=checkout`,
           logoUrl: settings.logoUrl,
         });
 
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
           currency: cart.currency,
           currencySymbol: settings.currencySymbol || 'Rs.',
           storeName: settings.storeName || "Zaynah's E-Store",
-          checkoutUrl: cart.checkoutUrl || `${process.env.NEXT_PUBLIC_SITE_URL}/cart?step=checkout`,
+          checkoutUrl: cart.checkoutUrl || `${siteUrl}/cart?step=checkout`,
         });
 
         // Use template from settings if provided
@@ -109,7 +111,7 @@ export async function GET(req: NextRequest) {
                   <p><strong>Cart Value:</strong> ${settings.currencySymbol || 'Rs.'}${cart.subtotal.toLocaleString()}</p>
                   <p><strong>Items:</strong> ${cart.items.length}</p>
                   <p><strong>Last Activity:</strong> ${new Date(cart.lastActivity).toLocaleString()}</p>
-                  <p><a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/abandoned-carts" style="color:#e94560;">View in Admin →</a></p>
+                  <p><a href="${siteUrl}/admin/abandoned-carts" style="color:#e94560;">View in Admin →</a></p>
                 </div>
               `,
             }).catch(e => console.error('[abandoned-cart cron] Admin notify failed:', e));

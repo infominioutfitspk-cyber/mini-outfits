@@ -54,8 +54,8 @@ export async function sendEmail({
     }
 
     // Dynamic Message-ID Domain Resolution to prevent spam filtering on localhost/invalid domains
-    const siteUrl = await getSiteUrl();
-    let emailDomain = 'zaynahs.com';
+    const siteUrl = await getSiteUrl(settings);
+    let emailDomain = 'localhost';
     try {
       if (siteUrl && !siteUrl.includes('localhost') && !siteUrl.includes('127.0.0.1')) {
         const parsed = new URL(siteUrl);

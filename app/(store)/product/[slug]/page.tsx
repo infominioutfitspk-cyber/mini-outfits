@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const canonicalUrl = `${siteUrl}/product/${slug}`;
     const imageUrl = product.images?.[0]?.url 
       ? cleanLocalhostUrls(product.images[0].url, siteUrl) 
-      : '/og-default.jpg';
+      : settings.logoUrl || settings.faviconUrl || '';
 
     return {
       metadataBase: new URL(siteUrl),

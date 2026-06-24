@@ -4,10 +4,10 @@
  * 
  * @param urls Array of absolute page URLs to index (e.g., ['https://zaynahs.pk/products/cotton-shirt'])
  */
-export async function pingIndexNow(urls: string[]): Promise<boolean> {
+export async function pingIndexNow(urls: string[], siteUrlOverride?: string): Promise<boolean> {
   try {
     const key = process.env.INDEXNOW_API_KEY || '';
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const siteUrl = siteUrlOverride || process.env.NEXT_PUBLIC_SITE_URL || '';
 
     if (!key || key === 'yahan_indexnow_api_key_paste_karo') {
       console.warn('[IndexNow] Missing INDEXNOW_API_KEY. Skipping ping.');
@@ -15,7 +15,7 @@ export async function pingIndexNow(urls: string[]): Promise<boolean> {
     }
 
     if (!siteUrl) {
-      console.warn('[IndexNow] Missing NEXT_PUBLIC_SITE_URL. Skipping ping.');
+      console.warn('[IndexNow] Missing siteUrl. Skipping ping.');
       return false;
     }
 

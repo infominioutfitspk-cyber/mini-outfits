@@ -12,7 +12,7 @@ interface BreadcrumbProps {
 }
 
 export default function Breadcrumb({ items, siteUrl }: BreadcrumbProps) {
-  const finalSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+  const finalSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || '';
 
   // Build JSON-LD Breadcrumb Schema
   const schema = {

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import MediaSelectorModal from './MediaSelectorModal';
 import RichTextEditor from './RichTextEditor';
+import { getClientSiteUrl } from '@/lib/site-url';
 
 interface CategoryManagerProps {
   initialCategories: Category[];
@@ -202,7 +203,7 @@ export default function CategoryManager({ initialCategories, aiEnabled, storeUrl
             }
           } else {
             // Just trigger IndexNow
-            const siteUrl = storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+            const siteUrl = storeUrl || getClientSiteUrl();
             const pageUrl = `${siteUrl}/shop?category=${categorySlugToOptimize}`;
             const pingRes = await fetch('/api/indexnow', {
               method: 'POST',

@@ -13,6 +13,7 @@ import { getVariantPresets } from '@/lib/services/variantPresets';
 import { getSizeGuides } from '@/lib/services/sizeGuides';
 import { getBadges } from '@/lib/services/badges';
 import { createClient } from '@/lib/supabase/client';
+import { getClientSiteUrl } from '@/lib/site-url';
 import { toast } from 'sonner';
 
 
@@ -757,7 +758,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
               toast.warning(`SEO auto-generation skipped: ${resData?.error || 'AI not configured'}`);
             }
           } else {
-            const siteUrl = storeUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+            const siteUrl = storeUrl || getClientSiteUrl();
             const pageUrl = `${siteUrl}/product/${productSlugToOptimize}`;
             const pingRes = await fetch('/api/indexnow', {
               method: 'POST',

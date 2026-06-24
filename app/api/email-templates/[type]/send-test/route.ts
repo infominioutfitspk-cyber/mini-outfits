@@ -4,6 +4,7 @@ import { getSettings } from '@/lib/services/settings';
 import { buildVariables, replaceVariables, renderOrderItemsTable } from '@/lib/email/variables';
 import { getDefaultTemplate } from '@/lib/email/defaults/getDefaultTemplate';
 import { sendEmail } from '@/lib/email/sendEmail';
+import { getSiteUrl } from '@/lib/site-url-server';
 
 const mockData: Record<string, any> = {
   customer: {
@@ -109,7 +110,7 @@ export async function POST(
     if (customHtml === undefined && !isDefaultMode) customHtml = template.customHtml;
 
     const settings = await getSettings();
-    const siteUrl = settings.storeUrl || 'https://zaynahs.com';
+    const siteUrl = settings.storeUrl || await getSiteUrl(settings);
     const dynamicResetLink = `${siteUrl.replace(/\/$/, '')}/reset-password?token=mock_token_123`;
     const mergedData = { ...mockData, settings, resetLink: dynamicResetLink };
 

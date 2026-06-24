@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { callAI, getAISettings } from '@/lib/aiEngine';
 import { buildSystemPrompt, buildSEOPrompt } from '@/lib/seoPrompts';
 import { pingIndexNow } from '@/lib/indexNow';
+import { getSiteUrl } from '@/lib/site-url-server';
 
 export async function POST(request: Request) {
   try {
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       .eq('id', '00000000-0000-4000-8000-000000000001')
       .single();
 
-    const siteUrl = storeSettings?.store_url || process.env.NEXT_PUBLIC_SITE_URL || 'https://zaynahs.pk';
+    const siteUrl = storeSettings?.store_url || await getSiteUrl(storeSettings) || '';
 
     // Check if AI features are enabled globally
     if (!settings.ai_enabled) {

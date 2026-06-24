@@ -297,8 +297,8 @@ async function executeRequest(
 
       // OpenRouter can take extra headers
       if (provider.toLowerCase() === 'openrouter') {
-        headers['HTTP-Referer'] = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zaynahs.pk';
-        headers['X-Title'] = 'Zaynahs E-Store';
+        headers['HTTP-Referer'] = process.env.NEXT_PUBLIC_SITE_URL || '';
+        headers['X-Title'] = process.env.NEXT_PUBLIC_BRAND_NAME || 'Store';
       }
 
       const res = await makeFetch(url, headers, body);
