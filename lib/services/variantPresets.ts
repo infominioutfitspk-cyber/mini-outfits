@@ -1,7 +1,12 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { VariantPreset, VariantPresetValue } from '@/lib/types';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+const staticSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
 
 const mapPreset = (row: any): VariantPreset => ({
   id: row.id,
@@ -14,8 +19,7 @@ const mapPreset = (row: any): VariantPreset => ({
 
 export const getVariantPresets = async (): Promise<VariantPreset[]> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await staticSupabase
       .from('variant_presets')
       .select('*')
       .is('deleted_at', null)
@@ -31,12 +35,30 @@ export const getVariantPresets = async (): Promise<VariantPreset[]> => {
   }
 };
 
+export const getDeletedVariantPresets = async (): Promise<VariantPreset[]> => {
+  try {
+    const { data, error } = await staticSupabase
+      .from('variant_presets')
+      .select('*')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error) {
+      console.warn('[variantPresets] getDeletedVariantPresets:', error.message);
+      return [];
+    }
+    return (data || []).map(mapPreset);
+  } catch (error) {
+    console.error('[variantPresets] getDeletedVariantPresets failed:', error);
+    return [];
+  }
+};
+
 export const createVariantPreset = async (preset: {
   name: string;
   attribute: VariantPreset['attribute'];
   values: VariantPresetValue[];
 }): Promise<VariantPreset> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('variant_presets')
     .insert({ name: preset.name, attribute: preset.attribute, values: preset.values })
@@ -47,7 +69,7 @@ export const createVariantPreset = async (preset: {
 };
 
 export const deleteVariantPreset = async (id: string): Promise<void> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { error } = await supabase
     .from('variant_presets')
     .update({ deleted_at: new Date().toISOString() })
@@ -63,7 +85,7 @@ export const updateVariantPreset = async (
     values: VariantPresetValue[];
   }
 ): Promise<VariantPreset> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('variant_presets')
     .update({ name: preset.name, attribute: preset.attribute, values: preset.values })
@@ -74,24 +96,8 @@ export const updateVariantPreset = async (
   return mapPreset(data);
 };
 
-export const getDeletedVariantPresets = async (): Promise<VariantPreset[]> => {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('variant_presets')
-      .select('*')
-      .not('deleted_at', 'is', null)
-      .order('deleted_at', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(mapPreset);
-  } catch (error) {
-    console.error('[variantPresets] getDeletedVariantPresets failed:', error);
-    return [];
-  }
-};
-
 export const restoreVariantPreset = async (id: string): Promise<void> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { error } = await supabase
     .from('variant_presets')
     .update({ deleted_at: null })
@@ -100,7 +106,7 @@ export const restoreVariantPreset = async (id: string): Promise<void> => {
 };
 
 export const hardDeleteVariantPreset = async (id: string): Promise<void> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { error } = await supabase
     .from('variant_presets')
     .delete()

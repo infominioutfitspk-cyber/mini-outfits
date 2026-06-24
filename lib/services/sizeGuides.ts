@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { SizeGuide } from '@/lib/types';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
@@ -70,7 +70,7 @@ export const createSizeGuide = async (guide: {
   imageUrl?: string;
 }): Promise<SizeGuide> => {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('size_guides')
       .insert({
@@ -95,7 +95,7 @@ export const updateSizeGuide = async (
   guide: Partial<SizeGuide>
 ): Promise<SizeGuide> => {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const updatePayload: Record<string, any> = {};
     if (guide.name !== undefined) updatePayload.name = guide.name;
     if (guide.chart_data !== undefined) updatePayload.chart_data = guide.chart_data;
@@ -119,7 +119,7 @@ export const updateSizeGuide = async (
 
 export const deleteSizeGuide = async (id: string): Promise<void> => {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { error } = await supabase
       .from('size_guides')
       .update({ deleted_at: new Date().toISOString() })
@@ -135,8 +135,7 @@ export const deleteSizeGuide = async (id: string): Promise<void> => {
 
 export const getDeletedSizeGuides = async (): Promise<SizeGuide[]> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await staticSupabase
       .from('size_guides')
       .select('*')
       .not('deleted_at', 'is', null)
@@ -151,7 +150,7 @@ export const getDeletedSizeGuides = async (): Promise<SizeGuide[]> => {
 
 export const restoreSizeGuide = async (id: string): Promise<void> => {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { error } = await supabase
       .from('size_guides')
       .update({ deleted_at: null })
@@ -166,7 +165,7 @@ export const restoreSizeGuide = async (id: string): Promise<void> => {
 
 export const hardDeleteSizeGuide = async (id: string): Promise<void> => {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { error } = await supabase
       .from('size_guides')
       .delete()

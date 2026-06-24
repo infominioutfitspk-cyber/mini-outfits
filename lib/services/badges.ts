@@ -1,8 +1,12 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { Badge } from '@/lib/types';
 import { revalidateTag } from 'next/cache';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+const staticSupabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
 
 const mapBadge = (row: any): Badge => ({
   id: row.id,
@@ -15,8 +19,7 @@ const mapBadge = (row: any): Badge => ({
 
 export const getBadges = async (): Promise<Badge[]> => {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await staticSupabase
       .from('badges')
       .select('*')
       .order('created_at', { ascending: false });
