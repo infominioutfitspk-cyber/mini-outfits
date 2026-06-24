@@ -153,9 +153,12 @@ CREATE INDEX IF NOT EXISTS idx_modifiers_product ON product_modifiers (product_i
 -- ============================================================
 CREATE TABLE IF NOT EXISTS reviews (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE SET NULL,
   customer_name TEXT NOT NULL,
   customer_phone TEXT,
+  customer_email TEXT,
+  is_manual BOOLEAN DEFAULT false,
+  screenshot_url TEXT,
   rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment TEXT,
   approved BOOLEAN DEFAULT false,
@@ -167,6 +170,45 @@ CREATE TABLE IF NOT EXISTS reviews (
 CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews (product_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_approved ON reviews (approved);
 CREATE INDEX IF NOT EXISTS idx_reviews_hidden ON reviews (hidden);
+
+-- ============================================================
+-- SOCIAL PROOF (Global Reviews Hub wall items)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS social_proof (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  image_url TEXT NOT NULL,
+  caption TEXT,
+  source_type TEXT NOT NULL DEFAULT 'whatsapp' CHECK (source_type IN ('whatsapp', 'instagram', 'facebook', 'manual')),
+  active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_social_proof_active ON social_proof (active);
+CREATE INDEX IF NOT EXISTS idx_social_proof_sort ON social_proof (sort_order);
+
+ALTER TABLE social_proof ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read active social proof" ON social_proof FOR SELECT USING (active = true AND deleted_at IS NULL);
+CREATE POLICY "Admin all social proof" ON social_proof FOR ALL USING (auth.role() = 'authenticated');
+
+-- ============================================================
+-- SOCIAL PROOF PRODUCTS (Many-to-many junction)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS social_proof_products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  social_proof_id UUID NOT NULL REFERENCES social_proof(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(social_proof_id, product_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_spp_social_proof ON social_proof_products (social_proof_id);
+CREATE INDEX IF NOT EXISTS idx_spp_product ON social_proof_products (product_id);
+
+ALTER TABLE social_proof_products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read social_proof_products" ON social_proof_products FOR SELECT USING (true);
+CREATE POLICY "Admin all social_proof_products" ON social_proof_products FOR ALL USING (auth.role() = 'authenticated');
 
 -- ============================================================
 -- STORE SETTINGS (Singleton)
@@ -653,6 +695,7 @@ CREATE TABLE IF NOT EXISTS shipping_methods (
   name TEXT NOT NULL,
   cost NUMERIC(10,2) NOT NULL DEFAULT 0,
   estimated_days TEXT,
+  sort_order INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -669,6 +712,7 @@ CREATE TABLE IF NOT EXISTS payment_methods (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   code TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
   instructions TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()

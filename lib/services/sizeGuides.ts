@@ -31,14 +31,22 @@ const mapSizeGuide = (row: SizeGuideRow): SizeGuide => ({
 });
 
 const fetchSizeGuides = async (): Promise<SizeGuide[]> => {
-  const { data, error } = await staticSupabase
-    .from('size_guides')
-    .select('*')
-    .is('deleted_at', null)
-    .order('name', { ascending: true });
+  try {
+    const { data, error } = await staticSupabase
+      .from('size_guides')
+      .select('*')
+      .is('deleted_at', null)
+      .order('name', { ascending: true });
 
-  if (error) throw error;
-  return (data ?? []).map(mapSizeGuide);
+    if (error) {
+      console.warn('[sizeGuides] fetchSizeGuides query error:', error.message);
+      return [];
+    }
+    return (data ?? []).map(mapSizeGuide);
+  } catch (error) {
+    console.error('[sizeGuides] fetchSizeGuides failed:', error);
+    return [];
+  }
 };
 
 const cachedSizeGuides = unstable_cache(
@@ -48,7 +56,12 @@ const cachedSizeGuides = unstable_cache(
 );
 
 export const getSizeGuides = async (): Promise<SizeGuide[]> => {
-  return cachedSizeGuides();
+  try {
+    return await cachedSizeGuides();
+  } catch (error) {
+    console.error('[sizeGuides] getSizeGuides failed:', error);
+    return [];
+  }
 };
 
 export const createSizeGuide = async (guide: {
