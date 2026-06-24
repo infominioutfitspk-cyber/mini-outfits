@@ -178,7 +178,7 @@ async function proxyCNAMERecords() {
   }
   
   // Find CNAME records that are DNS-only (not proxied) and point to vercel or match the domain names
-  const targetRecords = listData.result.filter(r => !r.proxied && (r.content.includes('vercel') || r.name.includes('totvogue') || r.name.includes('zaynahs')));
+  const targetRecords = listData.result.filter(r => !r.proxied && (r.content.includes('vercel') || r.name.includes('minioutfits')));
   
   if (targetRecords.length === 0) {
     console.log('No DNS-only CNAME records found for proxying. All target records are already proxied (orange cloud).');
