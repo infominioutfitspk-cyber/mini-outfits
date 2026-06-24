@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { Badge } from '@/lib/types';
 import { revalidateTag } from 'next/cache';
 
@@ -40,7 +41,7 @@ export const createBadge = async (badge: {
   bgColor: string;
   textColor: string;
 }): Promise<Badge> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('badges')
     .insert({
@@ -64,7 +65,7 @@ export const updateBadge = async (
     textColor: string;
   }
 ): Promise<Badge> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('badges')
     .update({
@@ -82,7 +83,7 @@ export const updateBadge = async (
 };
 
 export const deleteBadge = async (id: string): Promise<void> => {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { error } = await supabase
     .from('badges')
     .delete()
