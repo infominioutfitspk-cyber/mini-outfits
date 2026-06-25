@@ -961,8 +961,58 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                 return (
                   <div 
                     key={product.id}
-                    className="bg-white dark:bg-[#16162a] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 text-gray-900 dark:text-white transition-all"
+                    draggable={sortBy === 'manual'}
+                    onDragStart={sortBy === 'manual' ? (e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', product.id); setDraggingId(product.id); } : undefined}
+                    onDragOver={sortBy === 'manual' ? (e) => { e.preventDefault(); if (!draggingId || draggingId === product.id) return; const srcIdx = products.findIndex(p => p.id === draggingId); const tgtIdx = products.findIndex(p => p.id === product.id); if (srcIdx === -1 || tgtIdx === -1) return; const reordered = [...products]; const [dragged] = reordered.splice(srcIdx, 1); reordered.splice(tgtIdx > srcIdx ? tgtIdx - 1 : tgtIdx, 0, dragged); setProducts(reordered); setHasUnsavedChanges(true); setDraggingId(product.id); } : undefined}
+                    onDrop={sortBy === 'manual' ? () => setDraggingId(null) : undefined}
+                    onDragEnd={sortBy === 'manual' ? () => setDraggingId(null) : undefined}
+                    className={`bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-0 text-gray-900 dark:text-white transition-all overflow-hidden${draggingId === product.id ? ' opacity-50 ring-2 ring-[#e94560]/40' : ''}`}
                   >
+                    {/* Mobile Sort Controls Row — only in manual order mode */}
+                    {sortBy === 'manual' && (
+                      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#0f0f1b] border-b border-gray-100 dark:border-gray-800">
+                        {/* Rank badge */}
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center min-w-[26px] h-6 px-1.5 rounded-md bg-gray-200/80 dark:bg-gray-700 text-[10px] font-black text-gray-600 dark:text-gray-300 tabular-nums select-none">
+                            #{products.findIndex(p => p.id === product.id) + 1}
+                          </span>
+                          {/* Drag handle */}
+                          <span
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-[#1d1d36] border border-gray-200 dark:border-gray-700 text-gray-400 cursor-grab active:cursor-grabbing touch-pan-y select-none"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="h-4 w-4" />
+                            <span className="text-[10px] font-bold text-gray-400 hidden xs:inline">Drag</span>
+                          </span>
+                        </div>
+                        {/* Up / Down tap buttons */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveProduct(product.id, 'up')}
+                            disabled={products.findIndex(p => p.id === product.id) === 0}
+                            className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1d1d36] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#252542] hover:text-gray-800 dark:hover:text-white active:scale-95 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+                            title="Move up"
+                            aria-label="Move product up"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveProduct(product.id, 'down')}
+                            disabled={products.findIndex(p => p.id === product.id) === products.length - 1}
+                            className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1d1d36] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#252542] hover:text-gray-800 dark:hover:text-white active:scale-95 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+                            title="Move down"
+                            aria-label="Move product down"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Card Body */}
+                    <div className="p-4 space-y-4">
                     {/* Card Header */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -1388,6 +1438,7 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                         </div>
                       </div>
                     )}
+                    </div>{/* end Card Body */}
                   </div>
                 );
               })}
@@ -1492,7 +1543,7 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
       )}
 
       {/* Sticky Save Footer — consolidated with bulk actions */}
-      <div className={`sticky bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#16162a] border-t border-gray-200 dark:border-gray-800 px-6 py-4 shadow-lg rounded-t-2xl transition-all duration-300 ${!hasUnsavedChanges ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0 pointer-events-none'
+      <div className={`sticky bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#16162a] border-t border-gray-200 dark:border-gray-800 px-6 py-4 shadow-lg rounded-t-2xl transition-all duration-300 ${!hasUnsavedChanges ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0 pointer-events-auto'
         }`}>
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Contextual multi-selection controls */}

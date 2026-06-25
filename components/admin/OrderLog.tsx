@@ -327,7 +327,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
       `Order: ${order.orderNumber}`,
       `Customer: ${order.customerName || 'N/A'}`,
       `Phone: ${order.customerPhone || 'N/A'}`,
-      `Date: ${new Date(order.createdAt).toLocaleString()}`,
+       `Date: ${new Date(order.createdAt).toLocaleString('en-GB')}`,
       `Status: ${order.status.toUpperCase()}`,
       `\nItems:\n${itemsText}`,
       `\nTotal: ${formatPrice(order.total, settings.currencySymbol)}`,
@@ -587,8 +587,8 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                         {order.staffNotes || '—'}
                       </td>
                       <td className="py-3 px-4 md:py-4 md:px-6 text-xs text-gray-500 dark:text-gray-400 font-medium hidden md:table-cell">
-                        {new Date(order.createdAt).toLocaleDateString()}<br />
-                        <span className="text-gray-400 dark:text-gray-500">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {new Date(order.createdAt).toLocaleDateString('en-GB')}<br />
+                        <span className="text-gray-400 dark:text-gray-500">{new Date(order.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                       </td>
                     </tr>
                   ))}
@@ -651,7 +651,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                     <option value="cancelled">Cancelled</option>
                     <option value="refunded">Refunded</option>
                   </select>
-                  <span className="text-[10px] text-gray-400 font-medium">{new Date(order.createdAt).toLocaleDateString()}</span>
+                  <span className="text-[10px] text-gray-400 font-medium">{new Date(order.createdAt).toLocaleDateString('en-GB')}</span>
                 </div>
               </div>
             ))}
@@ -692,7 +692,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                       </span>
                     </div>
                     <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-semibold mt-0.5">
-                      {new Date(selectedOrder.createdAt).toLocaleString()}
+                      {new Date(selectedOrder.createdAt).toLocaleString('en-GB')}
                     </p>
                   </div>
                 </div>
@@ -884,7 +884,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                                       </div>
                                     )}
                                     <div className="text-[10px] text-gray-400 mt-1 font-semibold">
-                                      {new Date(log.createdAt).toLocaleString()}
+                                      {new Date(log.createdAt).toLocaleString('en-GB')}
                                     </div>
                                   </div>
                                 </div>

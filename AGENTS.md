@@ -96,10 +96,28 @@ This app runs across ANY domain (localhost, custom domain, production). Never ha
 7. **All Supabase admin actions via Management API only.**
    - Never use Supabase CLI (`supabase db push`, `supabase migration` etc.)
    - Never use direct Postgres connection strings for schema changes
-   - All operations must use `SUPABASE_MGMT_TOKEN` from `.env.local` via `POST https://api.supabase.com/v1/projects/{ref}/sql`
+   - All operations must use `SUPABASE_MGMT_TOKEN` and `SUPABASE_PROJECT_REF` from `.env.local`
    - Covers: schema migrations, storage rules, RLS policies, triggers, functions, webhooks, auth config, and any other DDL/DML changes
    - Pattern: write SQL in a Node.js script file, execute with `https.request()`, handle errors
    - The management token is in `.env.local` as `SUPABASE_MGMT_TOKEN`
+
+8. **NEVER hardcode credentials in any file.**
+   - No tokens, API keys, passwords, or project refs in `.ts`, `.tsx`, `.sql`, `.md`, `.json`, or `.js` files
+   - Everything goes in `.env.local` only:
+     ```
+     SUPABASE_PROJECT_REF=your_project_ref
+     SUPABASE_MGMT_TOKEN=sbp_your_management_token
+     NEXT_PUBLIC_SUPABASE_URL=https://yourref.supabase.co
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+     SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+     ```
+   - GitHub will block pushes containing secrets — use `rg "sbp_|ghp_" --glob '!.env*' --glob '!.git'` to check
+
+9. **Clone / setup from scratch:**
+   - Copy `.env.example` to `.env.local` and fill in your Supabase project details
+   - Run `node scripts/init-db.mjs` to apply `SUPER_MASTER_SCHEMA.sql` (creates all tables, indexes, RLS, triggers)
+   - Run `node scripts/run-migration.mjs supabase/migrations/<filename>.sql` for individual migrations
+   - Then `npm run dev` — everything works
 <!-- END:db-rules -->
 
 <!-- BEGIN:social-proof-guidelines -->
@@ -120,6 +138,7 @@ This app runs across ANY domain (localhost, custom domain, production). Never ha
    - On the `/reviews` page, use `socialProofs.length` (already in client).
 <!-- END:social-proof-guidelines -->
 
+<<<<<<< HEAD
 <!-- BEGIN:supabase-skill -->
 # Supabase Skill — Full Reference
 
@@ -471,3 +490,34 @@ Agent AUTOMATICALLY:
 
 Full details: `docs/NEW_PROJECT_SETUP_GUIDE.md`
 <!-- END:agent-automation -->
+=======
+<!-- BEGIN:legacy-audit-rule -->
+# Legacy Project Audit Rule (Old Version → Complete Setup)
+
+Jab bhi koi **purana / existing project clone kare** (already Supabase, Cloudflare, Vercel, GitHub bane hain), to agent **in sab docs ko ek ek karke padhe** aur jo missing/wrong hai wo fix kare:
+
+| Area | Check Against |
+|---|---|
+| **Database** | `SUPER_MASTER_SCHEMA.sql` — sab tables, columns, indexes, RLS policies, triggers, functions exist karte hain? |
+| **Migrations** | `supabase/migrations/` — jo bhi migration file hai, wo `run-migration.mjs` se apply hai? |
+| **Storage** | `product-images` bucket exist karta hai? Public policy set hai? |
+| **Webhooks** | Supabase DB webhooks (product_changes, order_events etc.) exist karte hain? |
+| **Cloudflare DNS** | Domain ke A/CNAME records sahi hain? Proxy enabled (orange cloud)? |
+| **Cloudflare Rules** | Page Rules ya Cache Rules: HTML pages 24h cache, dynamic paths no-cache? SSL/TLS full strict? |
+| **Cloudflare Cache** | Actual pages HIT/MISS/BYPASS de rahi hain? `cf-cache-status` header check karo |
+| **Vercel** | Project import hai? Env vars set hain (Supabase keys)? Domain attached hai? Build successful? |
+| **GitHub** | Code pushed hai? Deployment trigger ho raha hai? |
+
+**Agent ka task:**
+1. Pehle **sari docs** ek sath batch-read karo: `docs/NEW_PROJECT_SETUP_GUIDE.md`, `docs/MANUAL_SETUP_GUIDE.md`, `docs/CLOUDFLARE_SUPABASE_SETUP.md`, `docs/MASTER_CACHE_GUIDE.md`, `docs/META_SYNC_GUIDE.md` (agar exist karein)
+2. Phir **SUPABASE_MGMT_TOKEN** + **CLOUDFLARE_API_TOKEN** + **VERCEL_TOKEN** le kar sab APIs se verify karo
+3. Jo cheezein missing hain, wo auto-create/fix karo
+4. Last mein summary do: "✅ Sab sahi hai" ya "⚠️ Yeh cheezein fixed ki"
+
+**Rules:**
+- Sirf actual missing cheezein fix karo — jo pehle se sahi hai use mat todo
+- Koi bhi naya feature add nahi karna — sirf existing setup complete karna hai
+- Har action ke baad verify karo ke kaam hua ya nahi
+- Kuch bhi delete mat karo jo pehle se kaam kar raha ho
+<!-- END:legacy-audit-rule -->
+>>>>>>> 046998f (fix: hydration mismatch in OrderLog (en-GB locale), add legacy audit rule to AGENTS.md + setup docs, add init-db/run-migration scripts)

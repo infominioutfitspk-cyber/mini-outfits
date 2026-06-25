@@ -3,22 +3,22 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  FolderOpen, 
-  ClipboardList, 
-  Settings, 
-  LogOut, 
-  Store, 
-  Star, 
-  Layers, 
-  Images, 
-  Award, 
-  Users, 
-  Layout, 
-  MessageSquare, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  FolderOpen,
+  ClipboardList,
+  Settings,
+  LogOut,
+  Store,
+  Star,
+  Layers,
+  Images,
+  Award,
+  Users,
+  Layout,
+  MessageSquare,
+  TrendingUp,
   ShoppingCart,
   Menu,
   X,
@@ -147,54 +147,70 @@ function AdminLayoutContent({
   };
 
   const navSections = [
-    { key: 'dashboard', label: '', items: [
-      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-    ]},
-    { key: 'catalog', label: 'CATALOG', items: [
-      { label: 'Products', href: '/admin/products', icon: ShoppingBag },
-      { label: 'Inventory', href: '/admin/inventory', icon: Package },
-      { label: 'Categories', href: '/admin/categories', icon: FolderOpen },
-      { label: 'Variants', href: '/admin/variants', icon: Layers },
-      { label: 'Size Guides', href: '/admin/size-guides', icon: Ruler },
-      { label: 'Media', href: '/admin/media', icon: Images },
-      ...(aiEnabled ? [{ label: 'SEO Copywriter', href: '/admin/seo', icon: Zap }] : []),
-    ]},
-    { key: 'orders', label: 'ORDERS', items: [
-      { label: 'Orders Log', href: '/admin/orders', icon: ClipboardList },
-      { label: 'Abandoned Carts', href: '/admin/abandoned-carts', icon: ShoppingCart },
-    ]},
-    { key: 'customers', label: 'CUSTOMERS', items: [
-      { label: 'Customers', href: '/admin/customers', icon: Users },
-      { label: 'WhatsApp Leads', href: '/admin/leads', icon: MessageSquare },
-    ]},
-    { key: 'reviews', label: 'REVIEWS', items: [
-      { label: 'Reviews', href: '/admin/reviews', icon: Star },
-      { label: 'Badges', href: '/admin/badges', icon: Award },
-    ]},
-    { key: 'reporting', label: '', items: [
-      { label: 'Reporting', href: '/admin/reporting', icon: TrendingUp },
-    ]},
-    { key: 'trash', label: 'TRASH', items: [
-      { label: 'Trash Bin', href: '/admin/trash', icon: Trash2 },
-    ]},
-    { key: 'settings', label: 'SETTINGS', items: [
-      { label: 'General', href: '/admin/settings?tab=general', icon: Settings },
-      { label: 'Header', href: '/admin/settings?tab=header', icon: Layout },
-      { label: 'Navigation', href: '/admin/settings?tab=navigation', icon: Navigation },
-      { label: 'Products', href: '/admin/settings?tab=products', icon: Package },
-      { label: 'Trust & Badges', href: '/admin/settings?tab=trust', icon: Shield },
-      { label: 'WhatsApp', href: '/admin/settings?tab=whatsapp', icon: MessageCircle },
-      { label: 'Policies & FAQ', href: '/admin/settings?tab=policies', icon: HelpCircle },
-      { label: 'Footer & Social', href: '/admin/settings?tab=footer', icon: Globe },
-      { label: 'Shipping & Pay', href: '/admin/settings?tab=shipping', icon: Truck },
-      { label: 'Premium', href: '/admin/settings?tab=premium', icon: Award },
-      { label: 'Coupons', href: '/admin/settings?tab=coupons', icon: CreditCard },
-      { label: 'Pixels & SEO', href: '/admin/settings?tab=pixels', icon: Globe },
-      { label: 'AI Settings', href: '/admin/settings?tab=ai_settings', icon: Zap },
-      { label: 'Email & SMTP', href: '/admin/settings?tab=email', icon: Mail },
-      ...(settings?.meta_sync_enabled ? [{ label: 'Meta Sync', href: '/admin/settings?tab=meta_sync', icon: RefreshCw }] : []),
-      { label: 'Homepage Customizer', href: '/admin/settings/customizer', icon: Layout },
-    ]},
+    {
+      key: 'dashboard', label: '', items: [
+        { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      ]
+    },
+    {
+      key: 'catalog', label: 'CATALOG', items: [
+        { label: 'Products', href: '/admin/products', icon: ShoppingBag },
+        { label: 'Inventory', href: '/admin/inventory', icon: Package },
+        { label: 'Categories', href: '/admin/categories', icon: FolderOpen },
+        { label: 'Variants', href: '/admin/variants', icon: Layers },
+        { label: 'Size Guides', href: '/admin/size-guides', icon: Ruler },
+        { label: 'Media', href: '/admin/media', icon: Images },
+        ...(aiEnabled ? [{ label: 'SEO Copywriter', href: '/admin/seo', icon: Zap }] : []),
+      ]
+    },
+    {
+      key: 'orders', label: 'ORDERS', items: [
+        { label: 'Orders Log', href: '/admin/orders', icon: ClipboardList },
+        { label: 'Abandoned Carts', href: '/admin/abandoned-carts', icon: ShoppingCart },
+      ]
+    },
+    {
+      key: 'customers', label: 'CUSTOMERS', items: [
+        { label: 'Customers', href: '/admin/customers', icon: Users },
+        { label: 'WhatsApp Leads', href: '/admin/leads', icon: MessageSquare },
+      ]
+    },
+    {
+      key: 'reviews', label: 'REVIEWS', items: [
+        { label: 'Reviews', href: '/admin/reviews', icon: Star },
+        { label: 'Badges', href: '/admin/badges', icon: Award },
+      ]
+    },
+    {
+      key: 'reporting', label: '', items: [
+        { label: 'Reporting', href: '/admin/reporting', icon: TrendingUp },
+      ]
+    },
+    {
+      key: 'trash', label: 'TRASH', items: [
+        { label: 'Trash Bin', href: '/admin/trash', icon: Trash2 },
+      ]
+    },
+    {
+      key: 'settings', label: 'SETTINGS', items: [
+        { label: 'General', href: '/admin/settings?tab=general', icon: Settings },
+        { label: 'Header', href: '/admin/settings?tab=header', icon: Layout },
+        { label: 'Navigation', href: '/admin/settings?tab=navigation', icon: Navigation },
+        { label: 'Products', href: '/admin/settings?tab=products', icon: Package },
+        { label: 'Trust & Badges', href: '/admin/settings?tab=trust', icon: Shield },
+        { label: 'WhatsApp', href: '/admin/settings?tab=whatsapp', icon: MessageCircle },
+        { label: 'Policies & FAQ', href: '/admin/settings?tab=policies', icon: HelpCircle },
+        { label: 'Footer & Social', href: '/admin/settings?tab=footer', icon: Globe },
+        { label: 'Shipping & Pay', href: '/admin/settings?tab=shipping', icon: Truck },
+        { label: 'Premium', href: '/admin/settings?tab=premium', icon: Award },
+        { label: 'Coupons', href: '/admin/settings?tab=coupons', icon: CreditCard },
+        { label: 'Pixels & SEO', href: '/admin/settings?tab=pixels', icon: Globe },
+        { label: 'AI Settings', href: '/admin/settings?tab=ai_settings', icon: Zap },
+        { label: 'Email & SMTP', href: '/admin/settings?tab=email', icon: Mail },
+        ...(settings?.meta_sync_enabled ? [{ label: 'Meta Sync', href: '/admin/settings?tab=meta_sync', icon: RefreshCw }] : []),
+        { label: 'Homepage Customizer', href: '/admin/settings/customizer', icon: Layout },
+      ]
+    },
   ];
 
   const isItemActive = (href: string) => {
@@ -234,18 +250,16 @@ function AdminLayoutContent({
   return (
     <div className="flex h-screen w-screen flex-col md:flex-row bg-gray-50 dark:bg-[#0f0f1b] overflow-hidden">
       {/* 📱 Mobile Drawer Sidebar Backdrop (overlay) */}
-      <div 
+      <div
         onClick={() => setIsMobileMenuOpen(false)}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 ${
-          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
       />
 
       {/* 📱 Mobile Drawer Sidebar Container */}
-      <div 
-        className={`fixed inset-y-0 left-0 w-72 bg-[#1a1a2e] z-50 transform transition-transform duration-300 md:hidden flex flex-col h-full border-r border-current/10 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+      <div
+        className={`fixed inset-y-0 left-0 w-72 bg-[#1a1a2e] z-50 transform transition-transform duration-300 md:hidden flex flex-col h-full border-r border-current/10 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         {/* Mobile Drawer Header */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-current/10 flex-shrink-0">
@@ -257,9 +271,9 @@ function AdminLayoutContent({
             )}
             <span className="font-bold text-lg tracking-tight text-current">{storeName}</span>
           </div>
-          <button 
+          <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(false); }} 
+            onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(false); }}
             className="p-2 rounded-xl text-current opacity-50 hover:bg-current/10 hover:opacity-100 transition-all focus:outline-none active:scale-95"
             title="Close menu"
           >
@@ -290,11 +304,10 @@ function AdminLayoutContent({
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          active
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${active
                             ? 'bg-[#e94560] text-white shadow-md'
                             : 'text-current opacity-70 hover:opacity-100 hover:bg-current/10'
-                        }`}
+                          }`}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -365,19 +378,18 @@ function AdminLayoutContent({
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          active
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${active
                             ? 'bg-[#e94560] text-white shadow-md'
                             : 'text-current opacity-70 hover:opacity-100 hover:bg-current/10'
-                        }`}
+                          }`}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
                         <span>{item.label}</span>
                         {(item.label === 'Orders Log' || item.label === 'Abandoned Carts' || item.label === 'WhatsApp Leads') && (
                           (() => {
                             const count = item.label === 'Orders Log' ? todayCounts.pending
-                                        : item.label === 'Abandoned Carts' ? todayCounts.pendingCarts
-                                        : todayCounts.leads;
+                              : item.label === 'Abandoned Carts' ? todayCounts.pendingCarts
+                                : todayCounts.leads;
                             if (count !== undefined && count > 0) return (
                               <span className="ml-auto text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full leading-none">
                                 {count > 99 ? '99+' : count}
@@ -454,11 +466,10 @@ function AdminLayoutContent({
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`flex flex-col items-center justify-center flex-1 h-full relative text-[10px] font-bold transition-colors ${
-                  active
+                className={`flex flex-col items-center justify-center flex-1 h-full relative text-[10px] font-bold transition-colors ${active
                     ? 'text-[#e94560]'
                     : 'text-gray-400 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <div className="relative flex items-center justify-center">
                   <Icon className="h-5.5 w-5.5 mb-0.5 shrink-0" />

@@ -58,34 +58,29 @@ Agent:
 
 **Agar project already exist karta hai** (Supabase, Vercel, Cloudflare, GitHub sab bane hue hain) to agent **APIs se sab check karega** aur jo missing/wrong hai fix karega.
 
+<!-- BEGIN:legacy-audit-rule -->
 ### Credentials do:
 
 ```bash
-### — SUPABASE Management Token + Project Ref (dashboard URL mein "project/" ke baad wala ref)
+### — SUPABASE Management Token (sbp_) + Project Ref (dashboard URL mein "project/" ke baad wala ref)
 ### — CLOUDFLARE Zone ID + API Token
-### — VERCEL Token
+### — VERCEL Token (vcp_xxx)
 ### — GITHUB username + repo name
 ```
 
 ### Agent Kya Check Karega:
 
-| Category | Check | Fix |
+| Area | Check Against | Fix |
 |---|---|---|
-| **Supabase Tables** | Kya `reviews`, `social_proof`, `social_proof_products` tables exist karte hain? Schema columns sahi hain? | Missing tables/migrations run karega, missing columns add karega |
-| **Supabase Migrations** | Kya saari migrations apply hain? (`supabase/migrations/` folder vs `_supabase_migrations` table) | Unapplied migrations run karega |
-| **Supabase Storage** | Kya `review-images` bucket hai? Public access? | Bucket create karega, policies set karega |
-| **Supabase Webhooks** | Kya `review-changes`, `social-proof-changes`, `product-table-changes` webhooks hain? `revalidate` URL sahi hai? | Missing webhooks create karega, wrong URLs update karega |
-| **Supabase RLS** | Kya `social_proof` aur `social_proof_products` pe `service_role` ko access hai? | `GRANT ALL TO service_role` apply karega |
-| **Cloudflare DNS** | Kya domain ke A/CNAME records sahi hain? Vercel pointing? | Missing/wrong records fix karega |
-| **Cloudflare Page Rules** | Kya `html-pages` (24h cache), `no-cache-dynamic` (0s bypass) rules hain? | Rules create/update karega |
-| **Cloudflare SSL/TLS** | Kya "Full (strict)" mode hai? Always Use HTTPS on? | Fix karega |
-| **Vercel Deploy** | Kya latest commit deploy hai? Build succeed? | Re-deploy trigger karega agar fail hai |
-| **Vercel Env Vars** | Kya saare env vars set hain? Values correct? | Missing vars add karega, wrong values update karega |
-| **Vercel Domain** | Kya domain attached hai? DNS verified? SSL active? | Domain attach karega, re-verify karega |
-| **Vercel Caching** | Kya `Cache-Control` headers deploy mein hain? | Fix + re-deploy |
-| **GitHub** | Kya repo exist hai? Code pushed? Workflows configured? | Push karega, fix workflows |
-| **Cache (Production)** | Cloudflare HIT/MISS/BYPASS sahi hai? `/reviews`, `/`, `/shop`, `/products/...` HIT? | Cache rules fix karega, purge karega, re-verify |
-| **Env Files** | `.env.local` mein real keys hain? `.env.example` consistent? | `.env.local` populate karega, `.env.example` update karega |
+| **Database** | `SUPER_MASTER_SCHEMA.sql` — sab tables, columns, indexes, RLS policies, triggers, functions exist karte hain? | Missing tables/migrations run karega, missing columns add karega |
+| **Migrations** | `supabase/migrations/` — jo bhi migration file hai, wo `run-migration.mjs` se apply hai? | Unapplied migrations run karega |
+| **Storage** | `product-images`, `review-images` buckets exist karte hain? Public policies set? | Buckets create karega, policies set karega |
+| **Webhooks** | Supabase DB webhooks (`product_changes`, `review-changes`, `social-proof-changes`, `order_events`) exist karte hain? `revalidate` URL sahi hai? | Missing webhooks create karega, wrong URLs update karega |
+| **Cloudflare DNS** | Domain ke A/CNAME records sahi hain? Vercel pointing? Proxy enabled (orange cloud)? | Missing/wrong records fix karega |
+| **Cloudflare Rules** | Page Rules / Cache Rules: HTML pages 24h cache, dynamic paths 0s bypass? SSL/TLS Full (strict)? Always Use HTTPS? | Rules create/update karega |
+| **Cloudflare Cache** | Actual pages HIT/MISS/BYPASS de rahi hain? `/reviews`, `/`, `/shop`, `/products/...` HIT? `cf-cache-status` header check karega | Cache rules fix karega, purge karega, re-verify |
+| **Vercel** | Project import hai? Env vars set hain (Supabase keys)? Domain attached hai? SSL active? Build successful? | Import karega, env vars set karega, domain attach karega, re-deploy |
+| **GitHub** | Code pushed hai? Deployment trigger ho raha hai? Workflows configured? | Push karega, fix workflows |
 
 ### Agent Start Karne Ka Command:
 
@@ -93,14 +88,18 @@ Agent:
 Tum: "Audit mera project. Credentials: SUPABASE_MGMT_TOKEN = xyz, SUPABASE_REF = abcdef, CLOUDFLARE_ZONE_ID = abc, CLOUDFLARE_API_TOKEN = def, VERCEL_TOKEN = vcp_xxx, GITHUB_USERNAME = myname, GITHUB_REPO = myrepo"
 ```
 
-Agent:
-1. Sab services se API calls karega → current state capture karega
-2. Expectation se compare karega (migrations, tables, rules, envs, cache)
-3. Jo missing/wrong hai wo fix karega
-4. Final report dega: ✅ kya theek hai, ❌ kya abhi bhi baki hai
-5. Agar kuch touch nahi hona chahiye to confirm karega pahle
+Agent ka task:
+1. Pehle **sari docs** ek sath batch-read karo: `docs/NEW_PROJECT_SETUP_GUIDE.md`, `docs/MANUAL_SETUP_GUIDE.md`, `docs/CLOUDFLARE_SUPABASE_SETUP.md`, `docs/MASTER_CACHE_GUIDE.md` (agar exist karein)
+2. Phir **SUPABASE_MGMT_TOKEN** + **CLOUDFLARE_API_TOKEN** + **VERCEL_TOKEN** le kar sab APIs se verify karo
+3. Jo cheezein missing hain, wo auto-create/fix karo
+4. Last mein summary do: "✅ Sab sahi hai" ya "⚠️ Yeh cheezein fixed ki"
 
-**20+ checks, automatic. Sirf credentials do.**
+**Rules:**
+- Sirf actual missing cheezein fix karo — jo pehle se sahi hai use mat todo
+- Koi bhi naya feature add nahi karna — sirf existing setup complete karna hai
+- Har action ke baad verify karo ke kaam hua ya nahi
+- Kuch bhi delete mat karo jo pehle se kaam kar raha ho
+<!-- END:legacy-audit-rule -->
 
 ---
 
