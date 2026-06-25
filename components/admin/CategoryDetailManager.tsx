@@ -1,31 +1,36 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Product, Category, ProductVariant } from '@/lib/types';
 import { 
   updateProductFields, 
+  updateProductSortOrders,
   updateProductVariantFields,
-  updateProductCategoryRelationFields,
   addProductToCategory,
   removeProductFromCategory,
   getAllProductsAdmin
 } from '@/lib/services/products';
+import { updateCategory } from '@/lib/services/categories';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils/whatsapp';
 import { 
   Search, 
-  ChevronDown, 
-  ChevronRight, 
-  Edit, 
-  Loader2, 
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Edit,
+  GripVertical,
+  Loader2,
   PackageOpen,
   FolderOpen,
   Plus,
   Trash2,
-  X
+  X,
+  Zap
 } from '@/components/common/Icons';
+import PaginationFooter from './PaginationFooter';
 
 interface CategoryDetailManagerProps {
   category: Category;
@@ -34,35 +39,33 @@ interface CategoryDetailManagerProps {
 
 export default function CategoryDetailManager({ category, initialProducts }: CategoryDetailManagerProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [sortBy, setSortBy] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [savingSortOrder, setSavingSortOrder] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [updatingIds, setUpdatingIds] = useState<Record<string, boolean>>({});
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
+  const [targetPosition, setTargetPosition] = useState('');
+
+  const handleBulkMoveToPosition = (targetPos: number) => {
+    const targetIndex = Math.max(0, Math.min(targetPos - 1, products.length - 1));
+    const selectedItems = products.filter(p => selectedProductIds.includes(p.id));
+    const remainingItems = products.filter(p => !selectedProductIds.includes(p.id));
+    const reordered = [...remainingItems];
+    reordered.splice(targetIndex, 0, ...selectedItems);
+    setProducts(reordered);
+    setHasUnsavedChanges(true);
+    setTargetPosition('');
+  };
 
   // Bulk update category relation fields
-  const handleBulkUpdateRelation = async (fields: { isFeatured?: boolean; isVisible?: boolean }) => {
-    if (selectedProductIds.length === 0) return;
-    const toastId = toast.loading(`Updating ${selectedProductIds.length} products...`);
-    try {
-      await Promise.all(selectedProductIds.map(productId => 
-        updateProductCategoryRelationFields(productId, category.id, fields)
-      ));
-      setProducts(prev => prev.map(p => {
-        if (!selectedProductIds.includes(p.id)) return p;
-        const updatedRelations = p.productCategories?.map(pc => 
-          pc.categoryId === category.id ? { ...pc, ...fields } : pc
-        ) || [];
-        return {
-          ...p,
-          productCategories: updatedRelations
-        };
-      }));
-      setSelectedProductIds([]);
-      toast.success('Category settings updated for selected products', { id: toastId });
-    } catch (err) {
-      toast.error('Failed to update selected products', { id: toastId });
-    }
+  const handleBulkUpdateRelation = async (_fields: Record<string, never>) => {
+    // No-op after schema simplification
+    return;
   };
 
   // Bulk remove products from category
@@ -141,9 +144,7 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
             ...(addedProduct.productCategories || []),
             {
               productId: productId,
-              categoryId: category.id,
-              isFeatured: false,
-              isVisible: addedProduct.active
+              categoryId: category.id
             }
           ]
         };
@@ -226,38 +227,111 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
     }
   };
 
-  // Update category relation fields
-  const handleUpdateRelation = async (productId: string, fields: { isFeatured?: boolean; isVisible?: boolean }) => {
-    const fieldName = Object.keys(fields)[0];
-    const idKey = `relation-${fieldName}-${productId}`;
-    setUpdatingIds(prev => ({ ...prev, [idKey]: true }));
-    try {
-      await updateProductCategoryRelationFields(productId, category.id, fields);
-      
-      setProducts(prev => prev.map(p => {
-        if (p.id !== productId) return p;
-        const updatedRelations = p.productCategories?.map(pc => 
-          pc.categoryId === category.id ? { ...pc, ...fields } : pc
-        ) || [];
-        return {
-          ...p,
-          productCategories: updatedRelations
-        };
-      }));
-      toast.success('Category display settings updated');
-    } catch (err) {
-      toast.error('Failed to update category display settings');
-    } finally {
-      setUpdatingIds(prev => ({ ...prev, [idKey]: false }));
+  // Filter + sort products
+  const filteredProducts = products
+    .filter(product => {
+      const nameMatch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const skuMatch = product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+      return nameMatch || skuMatch;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'manual') return 0;
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'price_desc':
+          return b.price - a.price;
+        case 'price_asc':
+          return a.price - b.price;
+        case 'alpha_asc':
+          return a.name.localeCompare(b.name);
+        case 'alpha_desc':
+          return b.name.localeCompare(a.name);
+        default:
+          return 0;
+      }
+    });
+
+  const totalFiltered = filteredProducts.length;
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, idx: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', paginatedProducts[idx].id);
+    setDraggingId(paginatedProducts[idx].id);
+  };
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+
+    // Auto-scroll when cursor nears viewport edges during drag
+    const threshold = 120;
+    const speed = 15;
+    const cursorY = e.clientY;
+    const viewportH = window.innerHeight;
+    if (cursorY > viewportH - threshold) {
+      window.scrollBy({ top: speed, behavior: 'auto' });
+    } else if (cursorY < threshold) {
+      window.scrollBy({ top: -speed, behavior: 'auto' });
     }
+
+    if (!draggingId) return;
+    const tgtId = paginatedProducts[idx].id;
+    if (draggingId === tgtId) return;
+
+    const srcIdx = products.findIndex(p => p.id === draggingId);
+    const tgtIdx = products.findIndex(p => p.id === tgtId);
+    if (srcIdx === -1 || tgtIdx === -1) return;
+
+    const reordered = [...products];
+    const [dragged] = reordered.splice(srcIdx, 1);
+    const adjustedTgt = tgtIdx > srcIdx ? tgtIdx - 1 : tgtIdx;
+    reordered.splice(adjustedTgt, 0, dragged);
+    setProducts(reordered);
+    setHasUnsavedChanges(true);
+    setDraggingId(tgtId);
+  };
+  const handleDrop = () => {
+    setDraggingId(null);
+  };
+  const handleDragEnd = () => {
+    setDraggingId(null);
   };
 
-  // Filter products by search query
-  const filteredProducts = products.filter(product => {
-    const nameMatch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const skuMatch = product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
-    return nameMatch || skuMatch;
-  });
+  const moveProduct = (productId: string, direction: 'up' | 'down') => {
+    const idx = products.findIndex(p => p.id === productId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= products.length) return;
+    const copy = [...products];
+    const [removed] = copy.splice(idx, 1);
+    copy.splice(targetIdx, 0, removed);
+    setProducts(copy);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveSortOrder = async () => {
+    setSavingSortOrder(true);
+    const toastId = toast.loading('Saving changes...');
+    try {
+      if (sortBy === 'manual') {
+        await updateProductSortOrders(products.map(p => p.id));
+      }
+      await updateCategory(category.id, { activeSortPreference: sortBy });
+      setHasUnsavedChanges(false);
+      toast.success('Sort settings saved successfully', { id: toastId });
+    } catch (err) {
+      toast.error('Failed to save settings', { id: toastId });
+    } finally {
+      setSavingSortOrder(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -299,65 +373,30 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
             type="text"
             placeholder="Search products by name or SKU..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] text-sm focus:outline-none focus:border-[#1a1a2e] dark:focus:border-gray-600 focus:bg-white transition-all text-gray-900 dark:text-white"
           />
         </div>
+        <select
+          value={sortBy}
+          onChange={(e) => {
+            setSortBy(e.target.value);
+            setHasUnsavedChanges(true);
+            setCurrentPage(1);
+          }}
+          className="flex items-center gap-2 max-w-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200 focus:border-[#1a1a2e] dark:focus:border-gray-600 focus:outline-none"
+        >
+          <option value="manual">Manual Order</option>
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="alpha_asc">Alphabetically: A-Z</option>
+          <option value="alpha_desc">Alphabetically: Z-A</option>
+        </select>
       </div>
 
-      {/* Bulk actions for products */}
-      {selectedProductIds.length > 0 && (
-        <div className="bg-gray-50 dark:bg-[#1f1f3a] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-200">
-          <div className="text-sm font-bold text-gray-700 dark:text-gray-200">
-            {selectedProductIds.length} product(s) selected
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleBulkUpdateRelation({ isVisible: true })}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95 min-h-[38px]"
-            >
-              Set Active
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBulkUpdateRelation({ isVisible: false })}
-              className="px-3.5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95 min-h-[38px]"
-            >
-              Set Inactive
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBulkUpdateRelation({ isFeatured: true })}
-              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95 min-h-[38px]"
-            >
-              Set Featured
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBulkUpdateRelation({ isFeatured: false })}
-              className="px-3.5 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95 min-h-[38px]"
-            >
-              Unfeature
-            </button>
-            <button
-              type="button"
-              onClick={handleBulkRemoveProducts}
-              className="px-3.5 py-2 bg-[#e94560] hover:bg-[#e94560]/95 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm active:scale-95 min-h-[38px]"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Remove Selected</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedProductIds([])}
-              className="px-3.5 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all min-h-[38px] active:scale-95 cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Bulk actions for products — merged into footer below */}
 
       {/* Products Table */}
       <div className="bg-white dark:bg-[#16162a] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden text-gray-900 dark:text-white transition-colors">
@@ -377,10 +416,10 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                     <th className="py-3.5 px-4 w-10 text-center">
                       <input
                         type="checkbox"
-                        checked={filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.includes(p.id))}
+                        checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedProductIds(filteredProducts.map(p => p.id));
+                            setSelectedProductIds(paginatedProducts.map(p => p.id));
                           } else {
                             setSelectedProductIds([]);
                           }
@@ -388,30 +427,26 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                         className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
                       />
                     </th>
+                    {sortBy === 'manual' && (
+                      <>
+                        <th className="py-3.5 px-2 w-10 text-center text-[10px] font-bold uppercase tracking-wider text-gray-500">Rank</th>
+                        <th className="py-3.5 px-2 w-14 text-center text-[10px] font-bold uppercase tracking-wider text-gray-500">Sort</th>
+                      </>
+                    )}
                     <th className="py-3.5 px-4 w-10"></th>
                     <th className="py-3.5 px-4">Product</th>
                     <th className="py-3.5 px-4">Price</th>
                     <th className="py-3.5 px-4">Compare Price</th>
                     <th className="py-3.5 px-4">Stock</th>
-                    <th className="py-3.5 px-4 text-center">Featured in Category</th>
-                    <th className="py-3.5 px-4 text-center">Visible in Category</th>
                     <th className="py-3.5 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredProducts.map(product => {
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{paginatedProducts.map((product, index) => {
                     const isExpanded = expandedProducts[product.id] ?? false;
-                    const relation = product.productCategories?.find(pc => pc.categoryId === category.id) || {
-                      isFeatured: false,
-                      isVisible: product.active
-                    };
                     
                     return (
-                      <React.Fragment key={product.id}>
-                        <tr 
-                          className={`hover:bg-gray-50/50 dark:hover:bg-[#1d1d36]/30 transition-all ${
-                            !relation.isVisible ? 'opacity-60 bg-gray-50/30 dark:bg-gray-800/10' : ''
-                          }`}
+                      <React.Fragment key={product.id}><tr 
+                          className={`transition-all duration-200 ease-in-out${draggingId === product.id ? ' opacity-50 bg-orange-50/50 dark:bg-orange-950/20' : ' hover:bg-gray-50/50 dark:hover:bg-[#1d1d36]/30'}`}
                         >
                           <td className="py-4 px-4 text-center">
                             <input
@@ -427,6 +462,42 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                               className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
                             />
                           </td>
+                          {sortBy === 'manual' && (
+                            <td className="py-4 px-2 w-10 text-center">
+                              <span className="text-xs font-semibold text-slate-400">#{index + 1}</span>
+                            </td>
+                          )}
+                          {sortBy === 'manual' && (
+                            <td className="py-4 px-2 w-14 align-middle">
+                              <div className="flex flex-col items-center gap-0.5"
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragOver={(e) => handleDragOver(e, index)}
+                                onDrop={handleDrop}
+                                onDragEnd={handleDragEnd}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => moveProduct(product.id, 'up')}
+                                  disabled={products.findIndex(p => p.id === product.id) === 0}
+                                  className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                  <ChevronUp className="h-3 w-3" />
+                                </button>
+                                <span className="p-0.5 text-gray-400 cursor-grab active:cursor-grabbing touch-none select-none">
+                                  <GripVertical className="h-3.5 w-3.5" />
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => moveProduct(product.id, 'down')}
+                                  disabled={products.findIndex(p => p.id === product.id) === products.length - 1}
+                                  className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                  <ChevronDown className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                           <td className="py-4 px-4 text-center">
                             {product.hasVariants ? (
                               <button
@@ -582,48 +653,6 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                           </td>
                           <td className="py-4 px-4 text-center">
                             <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleUpdateRelation(product.id, { isFeatured: !relation.isFeatured })}
-                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  relation.isFeatured ? 'bg-[#e94560]' : 'bg-gray-200 dark:bg-gray-800'
-                                }`}
-                                role="switch"
-                                aria-checked={relation.isFeatured}
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                    relation.isFeatured ? 'translate-x-4' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              {updatingIds[`relation-isFeatured-${product.id}`] && (
-                                <Loader2 className="h-3 w-3 animate-spin text-[#e94560]" />
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleUpdateRelation(product.id, { isVisible: !relation.isVisible })}
-                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  relation.isVisible ? 'bg-[#e94560]' : 'bg-gray-200 dark:bg-gray-800'
-                                }`}
-                                role="switch"
-                                aria-checked={relation.isVisible}
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                    relation.isVisible ? 'translate-x-4' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              {updatingIds[`relation-isVisible-${product.id}`] && (
-                                <Loader2 className="h-3 w-3 animate-spin text-[#e94560]" />
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
                               <Link
                                 href={`/admin/products/${product.id}`}
                                 className="inline-flex p-2 rounded-lg border border-gray-200 dark:border-gray-800 text-gray-650 hover:bg-gray-50 dark:hover:bg-[#1d1d36] transition-all"
@@ -646,10 +675,9 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                               </button>
                             </div>
                           </td>
-                        </tr>                        {/* Sub-table for variants */}
-                        {product.hasVariants && isExpanded && (
+                        </tr>{product.hasVariants && isExpanded && (
                           <tr>
-                            <td colSpan={9} className="bg-gray-50/40 dark:bg-[#0e0e1e]/40 p-4">
+                            <td colSpan={sortBy === 'manual' ? 9 : 7} className="bg-gray-50/40 dark:bg-[#0e0e1e]/40 p-4">
                               {product.variants.some(v => selectedVariantIds.includes(v.id)) && (
                                 <div className="ml-10 bg-gray-100/95 dark:bg-[#1c1c36] p-4 rounded-xl border border-gray-200 dark:border-gray-800 mb-3 flex flex-wrap items-center justify-between gap-4 animate-in slide-in-from-top-1 duration-150">
                                   <div className="text-xs font-bold text-gray-700 dark:text-gray-200">
@@ -781,8 +809,7 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                                       <th className="py-2.5 px-4">Stock Level</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-150 dark:divide-gray-800 bg-white/50 dark:bg-[#16162a]/50">
-                                    {product.variants.map(variant => {
+                                  <tbody className="divide-y divide-gray-150 dark:divide-gray-800 bg-white/50 dark:bg-[#16162a]/50">{product.variants.map(variant => {
                                       const variantLabel = [variant.color, variant.size, variant.material, variant.customValue].filter(Boolean).join(' / ') || 'Default';
                                       
                                       return (
@@ -919,8 +946,7 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                               </div>
                             </td>
                           </tr>
-                        )}
-                      </React.Fragment>
+                        )}</React.Fragment>
                     );
                   })}
                 </tbody>
@@ -929,19 +955,13 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
 
             {/* Mobile View: Cards */}
             <div className="md:hidden space-y-4">
-              {filteredProducts.map(product => {
+              {paginatedProducts.map(product => {
                 const isExpanded = expandedProducts[product.id] ?? false;
-                const relation = product.productCategories?.find(pc => pc.categoryId === category.id) || {
-                  isFeatured: false,
-                  isVisible: product.active
-                };
                 
                 return (
                   <div 
                     key={product.id}
-                    className={`bg-white dark:bg-[#16162a] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 text-gray-900 dark:text-white transition-all ${
-                      !relation.isVisible ? 'opacity-65 bg-gray-50/50 dark:bg-gray-900/30' : ''
-                    }`}
+                    className="bg-white dark:bg-[#16162a] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 text-gray-900 dark:text-white transition-all"
                   >
                     {/* Card Header */}
                     <div className="flex items-start justify-between gap-3">
@@ -1005,55 +1025,6 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
                             <Trash2 className="h-4 w-4" />
                           )}
                         </button>
-                      </div>
-                    </div>
-
-                    {/* Display Settings / Toggles */}
-                    <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-[#0f0f1b] p-3 rounded-xl">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Featured in Cat</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleUpdateRelation(product.id, { isFeatured: !relation.isFeatured })}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              relation.isFeatured ? 'bg-[#e94560]' : 'bg-gray-200 dark:bg-gray-800'
-                            }`}
-                            role="switch"
-                            aria-checked={relation.isFeatured}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                relation.isFeatured ? 'translate-x-4' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                          {updatingIds[`relation-isFeatured-${product.id}`] && (
-                            <Loader2 className="h-3 w-3 animate-spin text-[#e94560]" />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Visible in Cat</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleUpdateRelation(product.id, { isVisible: !relation.isVisible })}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              relation.isVisible ? 'bg-[#e94560]' : 'bg-gray-200 dark:bg-gray-800'
-                            }`}
-                            role="switch"
-                            aria-checked={relation.isVisible}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                relation.isVisible ? 'translate-x-4' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                          {updatingIds[`relation-isVisible-${product.id}`] && (
-                            <Loader2 className="h-3 w-3 animate-spin text-[#e94560]" />
-                          )}
-                        </div>
                       </div>
                     </div>
 
@@ -1425,6 +1396,14 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
         )}
       </div>
 
+      <PaginationFooter
+        totalItems={totalFiltered}
+        pageSize={pageSize}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
+
       {/* Add Product Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity duration-350">
@@ -1511,6 +1490,87 @@ export default function CategoryDetailManager({ category, initialProducts }: Cat
           </div>
         </div>
       )}
+
+      {/* Sticky Save Footer — consolidated with bulk actions */}
+      <div className={`sticky bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#16162a] border-t border-gray-200 dark:border-gray-800 px-6 py-4 shadow-lg rounded-t-2xl transition-all duration-300 ${!hasUnsavedChanges ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0 pointer-events-none'
+        }`}>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Contextual multi-selection controls */}
+          {selectedProductIds.length > 0 ? (
+            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg text-sm text-gray-800 dark:text-gray-200 pointer-events-auto">
+              <span className="font-semibold whitespace-nowrap inline-flex items-center gap-1.5"><Zap className="h-4 w-4 text-amber-500" /> {selectedProductIds.length} Selected</span>
+              <button
+                type="button"
+                onClick={() => handleBulkMoveToPosition(1)}
+                className="hover:text-[#e94560] font-medium cursor-pointer inline-flex items-center gap-1"
+              >
+                <ChevronUp className="h-3.5 w-3.5" /> Top
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkMoveToPosition(products.length)}
+                className="hover:text-[#e94560] font-medium cursor-pointer inline-flex items-center gap-1"
+              >
+                <ChevronDown className="h-3.5 w-3.5" /> Bottom
+              </button>
+              <div className="flex items-center gap-1 border-l border-gray-200 dark:border-gray-700 pl-3 ml-1">
+                <span className="text-xs text-gray-500">Rank:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={products.length}
+                  value={targetPosition}
+                  onChange={e => setTargetPosition(e.target.value)}
+                  placeholder="#"
+                  className="w-12 px-1.5 py-1 border border-gray-300 dark:border-gray-600 rounded text-center text-xs bg-white dark:bg-[#0f0f1b] text-gray-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pos = parseInt(targetPosition, 10);
+                    if (!isNaN(pos) && pos >= 1 && pos <= products.length) {
+                      handleBulkMoveToPosition(pos);
+                    }
+                  }}
+                  disabled={!targetPosition}
+                  className="bg-[#e94560] text-white text-xs px-2 py-1 rounded font-bold disabled:opacity-40 cursor-pointer"
+                >
+                  Go
+                </button>
+              </div>
+              <div className="w-px h-5 bg-gray-300 dark:bg-gray-700" />
+              <button
+                type="button"
+                onClick={handleBulkRemoveProducts}
+                className="text-xs text-red-500 hover:text-red-700 font-bold cursor-pointer"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedProductIds([])}
+                className="text-xs text-gray-500 hover:text-gray-700 font-bold cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 pointer-events-auto">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="font-semibold">Changes apply to: Category sorting settings</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleSaveSortOrder}
+            disabled={savingSortOrder || !hasUnsavedChanges}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-[#e94560] text-white hover:bg-[#e94560]/90 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto"
+          >
+            {savingSortOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Save Settings
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

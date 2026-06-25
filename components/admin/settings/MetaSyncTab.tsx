@@ -125,7 +125,7 @@ export default function MetaSyncTab() {
           </div>
         ) : (
           <div className="space-y-5 pt-2">
-            {categories.map(category => {
+            {categories.filter(c => c.slug !== 'shop').map(category => {
               const currentVal = mappings[category.id] || '';
               const isCustom = currentVal === 'custom' || (!PRESETS.includes(currentVal) && currentVal !== '');
               const selectValue = isCustom ? 'custom' : currentVal;

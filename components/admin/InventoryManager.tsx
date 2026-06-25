@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   PackageOpen
 } from '@/components/common/Icons';
+import PaginationFooter from './PaginationFooter';
 
 interface InventoryManagerProps {
   products: Product[];
@@ -28,6 +29,8 @@ export default function InventoryManager({ products: initialProducts, categories
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [expandedProducts, setExpandedProducts] = useState<Record<string, boolean>>({});
   const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   // Bulk updater for variants
   const handleBulkUpdateVariantStock = async (productId: string, variantIds: string[], newStock: number) => {
@@ -190,6 +193,12 @@ export default function InventoryManager({ products: initialProducts, categories
     return true;
   });
 
+  const totalFiltered = filteredProducts.length;
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Calculate stock status helpers
   const getStockBadge = (stock: number, threshold: number = 5) => {
     if (stock === 0) {
@@ -283,7 +292,7 @@ export default function InventoryManager({ products: initialProducts, categories
             type="text"
             placeholder="Search products or SKUs..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] text-sm focus:outline-none focus:border-[#1a1a2e] dark:focus:border-gray-600 focus:bg-white transition-all text-gray-900 dark:text-white"
           />
         </div>
@@ -293,11 +302,11 @@ export default function InventoryManager({ products: initialProducts, categories
             <SlidersHorizontal className="h-4 w-4 text-gray-400" />
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
               className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b] px-3 py-2 text-sm focus:outline-none focus:bg-white text-gray-900 dark:text-white"
             >
               <option value="all">All Categories</option>
-              {categories.map(cat => (
+              {categories.filter(cat => cat.slug !== 'shop').map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
@@ -307,7 +316,7 @@ export default function InventoryManager({ products: initialProducts, categories
             <input
               type="checkbox"
               checked={showLowStockOnly}
-              onChange={(e) => setShowLowStockOnly(e.target.checked)}
+              onChange={(e) => { setShowLowStockOnly(e.target.checked); setCurrentPage(1); }}
               className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
             />
             <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Show Low Stock Only</span>
@@ -337,15 +346,12 @@ export default function InventoryManager({ products: initialProducts, categories
                     <th className="py-3.5 px-4 text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredProducts.map(product => {
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{paginatedProducts.map(product => {
                     const isExpanded = expandedProducts[product.id] ?? false;
                     const threshold = product.inventoryThreshold !== undefined && product.inventoryThreshold !== null ? product.inventoryThreshold : 5;
                     
                     return (
-                      <React.Fragment key={product.id}>
-                        {/* Parent Product Row */}
-                        <tr className="hover:bg-gray-50/50 dark:hover:bg-[#1d1d36]/30 transition-colors">
+                      <React.Fragment key={product.id}><tr className="hover:bg-gray-50/50 dark:hover:bg-[#1d1d36]/30 transition-colors">
                           <td className="py-4 px-4 text-center">
                             {product.hasVariants ? (
                               <button
@@ -466,9 +472,7 @@ export default function InventoryManager({ products: initialProducts, categories
                               {renderProductStatus(product)}
                             </div>
                           </td>
-                        </tr>
-
-                        {/* Expanded Variants Subtable */}
+                        </tr>{/* Expanded Variants Subtable */}
                         {product.hasVariants && isExpanded && (
                           <tr>
                             <td colSpan={6} className="bg-gray-50/40 dark:bg-[#0e0e1e]/40 p-4">
@@ -573,8 +577,7 @@ export default function InventoryManager({ products: initialProducts, categories
                                       <th className="py-2.5 px-4 text-right">Status</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-150 dark:divide-gray-800 bg-white/50 dark:bg-[#16162a]/50">
-                                    {product.variants.map(variant => {
+                                  <tbody className="divide-y divide-gray-150 dark:divide-gray-800 bg-white/50 dark:bg-[#16162a]/50">{product.variants.map(variant => {
                                       const variantLabel = [variant.color, variant.size, variant.material, variant.customValue].filter(Boolean).join(' / ') || 'Default';
                                       const variantThreshold = variant.inventoryThreshold !== undefined && variant.inventoryThreshold !== null ? variant.inventoryThreshold : 5;
                                       
@@ -680,8 +683,7 @@ export default function InventoryManager({ products: initialProducts, categories
                               </div>
                             </td>
                           </tr>
-                        )}
-                      </React.Fragment>
+                        )}</React.Fragment>
                     );
                   })}
                 </tbody>
@@ -691,7 +693,7 @@ export default function InventoryManager({ products: initialProducts, categories
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-4">
-            {filteredProducts.map(product => {
+            {paginatedProducts.map(product => {
               const isExpanded = expandedProducts[product.id] ?? false;
               const threshold = product.inventoryThreshold !== undefined && product.inventoryThreshold !== null ? product.inventoryThreshold : 5;
               
@@ -1039,6 +1041,14 @@ export default function InventoryManager({ products: initialProducts, categories
               );
             })}
           </div>
+
+          <PaginationFooter
+            totalItems={totalFiltered}
+            pageSize={pageSize}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
     </div>

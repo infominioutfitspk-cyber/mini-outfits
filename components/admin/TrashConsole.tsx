@@ -684,8 +684,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredProducts.map(product => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredProducts.map(product => {
                 const primaryImg = product.images?.find(i => i.isPrimary) || product.images?.[0];
                 const isSelected = selectedIds.includes(product.id);
                 return (
@@ -849,8 +848,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredCategories.map(category => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredCategories.map(category => {
                 const isSelected = selectedIds.includes(category.id);
                 return (
                   <tr key={category.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
@@ -1010,8 +1008,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredReviews.map(review => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredReviews.map(review => {
                 const isSelected = selectedIds.includes(review.id);
                 return (
                   <tr key={review.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
@@ -1177,8 +1174,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredOrders.map(order => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredOrders.map(order => {
                 const isSelected = selectedIds.includes(order.id);
                 return (
                   <tr key={order.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
@@ -1319,8 +1315,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredCustomers.map(customer => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredCustomers.map(customer => {
                 const isSelected = selectedIds.includes(customer.id);
                 return (
                   <tr key={customer.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
@@ -1636,8 +1631,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredLeads.map(lead => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredLeads.map(lead => {
                 const isSelected = selectedIds.includes(lead.id);
                 return (
                   <tr key={`${lead.type}-${lead.id}`} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
@@ -1792,8 +1786,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredSizeGuides.map(sg => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredSizeGuides.map(sg => {
                 const isSelected = selectedIds.includes(sg.id);
                 return (
                   <tr key={sg.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>
@@ -1935,8 +1928,7 @@ export default function TrashConsole({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">
-              {filteredVariantPresets.map(vp => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-sm">{filteredVariantPresets.map(vp => {
                 const isSelected = selectedIds.includes(vp.id);
                 return (
                   <tr key={vp.id} className={`hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors ${isSelected ? 'bg-[#e94560]/2 dark:bg-[#e94560]/2' : ''}`}>

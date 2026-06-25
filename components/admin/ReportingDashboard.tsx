@@ -303,8 +303,7 @@ export default function ReportingDashboard({ orders, settings, isEmbed = false }
                       <th className="py-3 text-right">Profit Contribution</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50 font-semibold text-gray-700 dark:text-gray-300">
-                    {topProducts.map((p, idx) => (
+                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50 font-semibold text-gray-700 dark:text-gray-300">{topProducts.map((p, idx) => (
                       <tr key={p.id || idx} className="hover:bg-gray-50/30 dark:hover:bg-white/2 transition-colors">
                         <td className="py-3 font-bold text-gray-900 dark:text-white truncate max-w-xs">{p.name}</td>
                         <td className="py-3 text-center font-bold text-gray-800 dark:text-gray-200">{p.qty}</td>

@@ -37,11 +37,11 @@ export default function RecentlyViewed({ products, settings, currentProductId }:
         if (products && products.length > 0) {
           mapped = filteredIds
             .map(id => products.find(p => p.id === id))
-            .filter((p): p is Product => !!p && p.active);
+            .filter((p): p is Product => !!p);
         } else {
           try {
             const fetched = await getProductsByIdsClient(filteredIds);
-            mapped = fetched.filter(p => p.active);
+            mapped = fetched || [];
           } catch (fetchErr) {
             console.error('Failed to fetch recently viewed products client-side:', fetchErr);
           }

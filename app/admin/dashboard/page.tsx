@@ -86,8 +86,7 @@ export default async function DashboardPage() {
                     <th className="py-3 px-4">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {orders.slice(0, 5).map(order => (
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">{orders.slice(0, 5).map(order => (
                     <tr key={order.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
                       <td className="py-3 px-4 font-bold text-[#1a1a2e] dark:text-white">{order.orderNumber}</td>
                       <td className="py-3 px-4 font-semibold">{order.customerName || 'N/A'}</td>

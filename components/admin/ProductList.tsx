@@ -18,6 +18,7 @@ import {
   PackageOpen
 } from '@/components/common/Icons';
 import ImportExportModal from '@/components/admin/ImportExportModal';
+import PaginationFooter from './PaginationFooter';
 
 interface ProductListProps {
   initialProducts: Product[];
@@ -32,19 +33,9 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
   const [syncingProductId, setSyncingProductId] = useState<string | null>(null);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-
-  const handleBulkActive = async (activeValue: boolean) => {
-    if (selectedProductIds.length === 0) return;
-    const toastId = toast.loading(`Updating ${selectedProductIds.length} products...`);
-    try {
-      await Promise.all(selectedProductIds.map(id => updateProductFields(id, { active: activeValue })));
-      setProducts(prev => prev.map(p => selectedProductIds.includes(p.id) ? { ...p, active: activeValue } : p));
-      toast.success(`Successfully updated ${selectedProductIds.length} products`, { id: toastId });
-      setSelectedProductIds([]);
-    } catch (err) {
-      toast.error('Failed to update products status', { id: toastId });
-    }
-  };
+  const [sortBy, setSortBy] = useState<string>('created-desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const handleBulkFeatured = async (featuredValue: boolean) => {
     if (selectedProductIds.length === 0) return;
@@ -120,18 +111,6 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
       toast.success('Product moved to Trash successfully');
     } catch (err) {
       toast.error('Failed to move product to Trash');
-    }
-  };
-
-  const handleToggleActive = async (product: Product) => {
-    try {
-      const nextActive = !product.active;
-      await updateProductFields(product.id, { active: nextActive });
-      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, active: nextActive } : p));
-      toast.success(`Product ${nextActive ? 'activated' : 'deactivated'} successfully`);
-    } catch (err) {
-      console.error('[ProductList] handleToggleActive failed:', err);
-      toast.error('Failed to update product state');
     }
   };
 
@@ -217,24 +196,56 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredProducts = products
+    .filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'manual': return 0;
+        case 'created-asc': return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'price-desc': return (b.price || 0) - (a.price || 0);
+        case 'price-asc': return (a.price || 0) - (b.price || 0);
+        case 'created-desc':
+        default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+  const totalFiltered = filteredProducts.length;
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
   );
 
   return (
     <div className="space-y-6">
       {/* Search & Actions header */}
       <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full lg:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <input
-            type="text"
-            placeholder="Search products by name or SKU..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#1a1a2e]"
-          />
+        <div className="flex items-center gap-3 w-full lg:w-auto">
+          <div className="relative flex-1 lg:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <input
+              type="text"
+              placeholder="Search products by name or SKU..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#1a1a2e]"
+            />
+          </div>
+          <div className="flex-shrink-0">
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#1a1a2e] cursor-pointer"
+            >
+              <option value="created-desc">Newest First</option>
+              <option value="created-asc">Oldest First</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full lg:w-auto">
           {settings.meta_sync_enabled && (
@@ -295,20 +306,6 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => handleBulkActive(true)}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95"
-            >
-              Set Active
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBulkActive(false)}
-              className="px-3.5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95"
-            >
-              Set Inactive
-            </button>
-            <button
-              type="button"
               onClick={() => handleBulkFeatured(true)}
               className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95"
             >
@@ -360,10 +357,10 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                       <th className="py-3 px-4 md:py-4 md:px-6 w-12 text-center">
                         <input
                           type="checkbox"
-                          checked={filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.includes(p.id))}
+                          checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedProductIds(filteredProducts.map(p => p.id));
+                              setSelectedProductIds(paginatedProducts.map(p => p.id));
                             } else {
                               setSelectedProductIds([]);
                             }
@@ -375,23 +372,19 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                       <th className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell">SKU</th>
                       <th className="py-3 px-4 md:py-4 md:px-6">Price</th>
                       <th className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell">Stock</th>
-                      <th className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell">Status</th>
                       <th className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell text-center">Featured</th>
                       {settings.meta_sync_enabled && <th className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell">Meta Sync</th>}
                       <th className="py-3 px-4 md:py-4 md:px-6 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {filteredProducts.map(product => {
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{paginatedProducts.map(product => {
                       const fallbackPlaceholder = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3C/svg%3E";
                       const primaryImage = product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url || fallbackPlaceholder;
                       const isSyncing = syncingProductId === product.id;
                       return (
                         <tr 
                           key={product.id} 
-                          className={`hover:bg-gray-50/20 dark:hover:bg-white/5 transition-all ${
-                            !product.active ? 'opacity-60 bg-gray-50/30 dark:bg-gray-800/10' : ''
-                          }`}
+                          className="hover:bg-gray-50/20 dark:hover:bg-white/5 transition-all"
                         >
                           <td className="py-3 px-4 md:py-4 md:px-6 w-12 text-center">
                             <input
@@ -416,11 +409,6 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                                 <p className="font-bold text-[#1a1a2e] dark:text-white text-xs md:text-sm max-w-[180px] lg:max-w-[400px] line-clamp-1">
                                   {product.name}
                                 </p>
-                                {!product.active && (
-                                  <span className="md:hidden inline-flex items-center text-[9px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
-                                    Inactive
-                                  </span>
-                                )}
                               </div>
                               {product.category && (
                                 <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">{product.category.name}</span>
@@ -435,25 +423,6 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                             ) : (
                               product.stock
                             )}
-                          </td>
-                          <td className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell">
-                            <div className="flex items-center">
-                              <button
-                                onClick={() => handleToggleActive(product)}
-                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  product.active ? 'bg-[#e94560]' : 'bg-gray-200 dark:bg-gray-800'
-                                }`}
-                                role="switch"
-                                aria-checked={product.active}
-                                title={product.active ? 'Deactivate Product' : 'Activate Product'}
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                    product.active ? 'translate-x-5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                            </div>
                           </td>
                           <td className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell text-center">
                             <div className="flex items-center justify-center">
@@ -516,10 +485,10 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.includes(p.id))}
+                  checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      setSelectedProductIds(filteredProducts.map(p => p.id));
+                      setSelectedProductIds(paginatedProducts.map(p => p.id));
                     } else {
                       setSelectedProductIds([]);
                     }
@@ -535,16 +504,14 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
 
             {/* Mobile Products Cards */}
             <div className="md:hidden space-y-3 p-4">
-              {filteredProducts.map(product => {
+              {paginatedProducts.map(product => {
                 const fallbackPlaceholder = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3C/svg%3E";
                 const primaryImage = product.images?.find(img => img.isPrimary)?.url || product.images?.[0]?.url || fallbackPlaceholder;
                 const isSyncing = syncingProductId === product.id;
                 return (
                   <div 
                     key={product.id} 
-                    className={`bg-white dark:bg-[#16162a] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3 transition-all ${
-                      !product.active ? 'opacity-65 bg-gray-50/50 dark:bg-gray-900/30' : ''
-                    }`}
+                    className="bg-white dark:bg-[#16162a] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <input
@@ -572,27 +539,6 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[10px]">
                       <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleToggleActive(product)}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              product.active ? 'bg-[#e94560]' : 'bg-gray-200 dark:bg-gray-800'
-                            }`}
-                            role="switch"
-                            aria-checked={product.active}
-                            title={product.active ? 'Deactivate Product' : 'Activate Product'}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                product.active ? 'translate-x-4' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                          <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                            {product.active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => handleToggleFeatured(product)}
@@ -649,6 +595,14 @@ export default function ProductList({ initialProducts, settings }: ProductListPr
           </>
         )}
       </div>
+
+      <PaginationFooter
+        totalItems={totalFiltered}
+        pageSize={pageSize}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
 
       <ImportExportModal
         isOpen={isImportExportOpen}

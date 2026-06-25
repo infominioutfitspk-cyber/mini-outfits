@@ -56,27 +56,15 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
   const [comparePrice, setComparePrice] = useState(initialProduct?.comparePrice?.toString() || '');
   const [cost, setCost] = useState(initialProduct?.cost?.toString() || '0');
   const [categoryId, setCategoryId] = useState(initialProduct?.categoryId || '');
-  const [selectedCategories, setSelectedCategories] = useState<{
-    categoryId: string;
-    isFeatured: boolean;
-    isVisible: boolean;
-  }[]>(
-    initialProduct?.productCategories?.map(pc => ({
-      categoryId: pc.categoryId,
-      isFeatured: pc.isFeatured,
-      isVisible: pc.isVisible,
-    })) || (initialProduct?.categoryId ? [{
-      categoryId: initialProduct.categoryId,
-      isFeatured: initialProduct.isFeatured || false,
-      isVisible: initialProduct.active ?? true,
-    }] : [])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
+    initialProduct?.productCategories?.map(pc => pc.categoryId) || 
+    (initialProduct?.categoryId ? [initialProduct.categoryId] : [])
   );
   const [inventoryThreshold, setInventoryThreshold] = useState(initialProduct?.inventoryThreshold?.toString() || '0');
   const [stock, setStock] = useState(initialProduct?.stock?.toString() || '0');
   const [description, setDescription] = useState(initialProduct?.description || '');
   const [shortDescription, setShortDescription] = useState(initialProduct?.shortDescription || '');
   const [tagInput, setTagInput] = useState(initialProduct?.tags?.join(', ') || '');
-  const [active, setActive] = useState(initialProduct?.active ?? true);
   const [enableSwatches, setEnableSwatches] = useState<boolean>(initialProduct?.enableSwatches ?? true);
   const [showSwatchesOnArchive, setShowSwatchesOnArchive] = useState<boolean>(initialProduct?.showSwatchesOnArchive ?? true);
   const [activeImageSelector, setActiveImageSelector] = useState<{ axisIdx: number; valIdx: number } | null>(null);
@@ -202,7 +190,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
         const [b, sg, prods] = await Promise.all([
           getBadges(),
           getSizeGuides(),
-          supabaseClient.from('products').select('id, name, price').eq('active', true)
+          supabaseClient.from('products').select('id, name, price')
         ]);
         setAllBadges(b);
         setSizeGuidesList(sg);
@@ -678,19 +666,16 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
         price: parseFloat(price) || 0,
         comparePrice: comparePrice.trim() ? parseFloat(comparePrice) : undefined,
         cost: parseFloat(cost) || 0,
-        categoryId: selectedCategories[0]?.categoryId || undefined,
-        productCategories: selectedCategories.map(sc => ({
+        categoryId: selectedCategoryIds[0] || undefined,
+        productCategories: selectedCategoryIds.map(categoryId => ({
           productId: isEdit && initialProduct ? initialProduct.id : '',
-          categoryId: sc.categoryId,
-          isFeatured: sc.isFeatured,
-          isVisible: sc.isVisible
+          categoryId
         })),
         inventoryThreshold: parseInt(inventoryThreshold) || 0,
         stock: computedStock,
         hasVariants,
         isService,
-        isFeatured: selectedCategories.some(sc => sc.isFeatured), // fallback global isFeatured if featured in any category
-        active: selectedCategories.some(sc => sc.isVisible), // fallback global active if visible in any category
+        isFeatured,
         enableSwatches,
         showSwatchesOnArchive,
         customBadgeId: customBadgeId || undefined,
@@ -880,14 +865,13 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                     />
                   </div>
                   <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-[#111124] max-h-64 overflow-y-auto">
-                    {categories.filter(cat => cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase())).length === 0 ? (
+                    {categories.filter(cat => cat.slug !== 'shop' && cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase())).length === 0 ? (
                       <span className="text-sm text-gray-500">No categories found.</span>
                     ) : (
                       categories
-                        .filter(cat => cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase()))
+                        .filter(cat => cat.slug !== 'shop' && cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase()))
                         .map(cat => {
-                          const isSelected = selectedCategories.some(sc => sc.categoryId === cat.id);
-                          const rel = selectedCategories.find(sc => sc.categoryId === cat.id);
+                          const isSelected = selectedCategoryIds.includes(cat.id);
                           return (
                             <div key={cat.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0 pb-2 mb-2 last:pb-0 last:mb-0">
                               <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -896,46 +880,15 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                                   checked={isSelected}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setSelectedCategories(prev => [...prev, { categoryId: cat.id, isFeatured: false, isVisible: true }]);
+                                      setSelectedCategoryIds(prev => [...prev, cat.id]);
                                     } else {
-                                      setSelectedCategories(prev => prev.filter(sc => sc.categoryId !== cat.id));
+                                      setSelectedCategoryIds(prev => prev.filter(id => id !== cat.id));
                                     }
                                   }}
                                   className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4 cursor-pointer"
                                 />
                                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{cat.name}</span>
                               </label>
-
-                              {isSelected && rel && (
-                                <div className="mt-2 ml-7 flex flex-wrap gap-4 text-xs">
-                                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input
-                                      type="checkbox"
-                                      checked={rel.isFeatured}
-                                      onChange={(e) => {
-                                        setSelectedCategories(prev => prev.map(sc =>
-                                          sc.categoryId === cat.id ? { ...sc, isFeatured: e.target.checked } : sc
-                                        ));
-                                      }}
-                                      className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-3.5 w-3.5 cursor-pointer"
-                                    />
-                                    <span className="font-medium text-gray-600 dark:text-gray-400">Featured in Category</span>
-                                  </label>
-                                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input
-                                      type="checkbox"
-                                      checked={rel.isVisible}
-                                      onChange={(e) => {
-                                        setSelectedCategories(prev => prev.map(sc =>
-                                          sc.categoryId === cat.id ? { ...sc, isVisible: e.target.checked } : sc
-                                        ));
-                                      }}
-                                      className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-3.5 w-3.5 cursor-pointer"
-                                    />
-                                    <span className="font-medium text-gray-600 dark:text-gray-400">Visible in Category</span>
-                                  </label>
-                                </div>
-                              )}
                             </div>
                           );
                         })
@@ -1951,8 +1904,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
                             <th className="py-3 px-3 w-[5%] text-center">Del</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
-                          {variants.map((variant, idx) => {
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">{variants.map((variant, idx) => {
                             const label = [variant.color, variant.size, variant.material, variant.customValue].filter(Boolean).join(' / ') || `Var ${idx + 1}`;
                             const isSelected = selectedVariantIndices.includes(idx);
                             return (
@@ -2327,16 +2279,6 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
             <div className="bg-white dark:bg-[#16162a] p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 text-gray-900 dark:text-white transition-colors">
               <h3 className="text-base font-bold text-gray-900">Status & Options</h3>
               <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={(e) => setActive(e.target.checked)}
-                    className="rounded border-gray-300 text-[#e94560] focus:ring-[#e94560] h-4 w-4"
-                  />
-                  <span className="text-sm font-semibold text-gray-700">Active (Visible in shop)</span>
-                </label>
-
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"

@@ -10,7 +10,6 @@ export async function GET() {
     const { data: products } = await supabaseAdmin
       .from('products')
       .select('name, price, slug')
-      .eq('active', true)
       .limit(20);
 
     const { data: categories } = await supabaseAdmin

@@ -1,7 +1,7 @@
 -- ============================================================
 -- ZAYNAHS E-STORE — SUPER MASTER SCHEMA
--- Version: 1.0.0
--- Updated: 2026-06-07
+-- Version: 2.1.0
+-- Updated: 2026-06-25
 -- ============================================================
 
 -- Enable UUID extension
@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS categories (
   image_url TEXT,
   sort_order INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
+  active_sort_preference TEXT DEFAULT 'manual',
   deleted_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -55,7 +56,6 @@ CREATE TABLE IF NOT EXISTS products (
   has_variants BOOLEAN DEFAULT false,   -- true if variants exist
   is_featured BOOLEAN DEFAULT false,
   is_service BOOLEAN DEFAULT false,     -- no stock tracking
-  active BOOLEAN DEFAULT true,
   enable_swatches BOOLEAN DEFAULT true,
   show_swatches_on_archive BOOLEAN DEFAULT true,
   tags TEXT[] DEFAULT '{}',
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS products (
   meta_sync_status TEXT DEFAULT 'pending',
   meta_sync_error TEXT,
   meta_last_synced_at TIMESTAMPTZ,
-  inventory_threshold INTEGER DEFAULT 0, -- alert threshold for product
+  inventory_threshold INTEGER DEFAULT 0,
   variation_order TEXT[] DEFAULT NULL,
   deleted_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -85,7 +85,6 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_slug ON products (LOWER(slug));
 CREATE INDEX IF NOT EXISTS idx_products_category ON products (category_id);
-CREATE INDEX IF NOT EXISTS idx_products_active ON products (active);
 
 -- ============================================================
 -- PRODUCT IMAGES
@@ -157,12 +156,12 @@ CREATE TABLE IF NOT EXISTS reviews (
   customer_name TEXT NOT NULL,
   customer_phone TEXT,
   customer_email TEXT,
-  is_manual BOOLEAN DEFAULT false,
-  screenshot_url TEXT,
   rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment TEXT,
   approved BOOLEAN DEFAULT false,
   hidden BOOLEAN DEFAULT false,
+  is_manual BOOLEAN DEFAULT false,
+  screenshot_url TEXT,
   deleted_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -172,7 +171,7 @@ CREATE INDEX IF NOT EXISTS idx_reviews_approved ON reviews (approved);
 CREATE INDEX IF NOT EXISTS idx_reviews_hidden ON reviews (hidden);
 
 -- ============================================================
--- SOCIAL PROOF (Global Reviews Hub wall items)
+-- SOCIAL PROOF (Global Reviews Hub)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS social_proof (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -193,7 +192,7 @@ CREATE POLICY "Public read active social proof" ON social_proof FOR SELECT USING
 CREATE POLICY "Admin all social proof" ON social_proof FOR ALL USING (auth.role() = 'authenticated');
 
 -- ============================================================
--- SOCIAL PROOF PRODUCTS (Many-to-many junction)
+-- SOCIAL PROOF PRODUCTS (Junction Table)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS social_proof_products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -637,9 +636,9 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 
--- PUBLIC READ (customers can read active products)
+-- PUBLIC READ (customers can read products)
 CREATE POLICY "Public read categories" ON categories FOR SELECT USING (active = true);
-CREATE POLICY "Public read products" ON products FOR SELECT USING (active = true);
+CREATE POLICY "Public read products" ON products FOR SELECT USING (true);
 CREATE POLICY "Public read product_images" ON product_images FOR SELECT USING (true);
 CREATE POLICY "Public read product_variants" ON product_variants FOR SELECT USING (active = true);
 CREATE POLICY "Public read product_modifiers" ON product_modifiers FOR SELECT USING (active = true);
@@ -697,6 +696,7 @@ CREATE TABLE IF NOT EXISTS shipping_methods (
   estimated_days TEXT,
   sort_order INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -715,6 +715,7 @@ CREATE TABLE IF NOT EXISTS payment_methods (
   sort_order INTEGER DEFAULT 0,
   active BOOLEAN DEFAULT true,
   instructions TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -772,7 +773,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
   version TEXT PRIMARY KEY,
   applied_at TIMESTAMPTZ DEFAULT NOW()
 );
-INSERT INTO schema_version (version) VALUES ('1.0.0') ON CONFLICT DO NOTHING;
+INSERT INTO schema_version (version) VALUES ('2.1.0') ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- DYNAMIC REVIEWS STATS SYNC TRIGGER
@@ -1311,8 +1312,6 @@ EXCEPTION WHEN OTHERS THEN NULL; END $$;
 CREATE TABLE IF NOT EXISTS public.product_categories (
   product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
-  is_featured BOOLEAN NOT NULL DEFAULT false,
-  is_visible BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (product_id, category_id)
 );

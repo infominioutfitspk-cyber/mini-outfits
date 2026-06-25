@@ -367,8 +367,7 @@ export default function ProductsSEOClient() {
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm text-gray-700 dark:text-gray-300">
-              {loading ? (
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm text-gray-700 dark:text-gray-300">{loading ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-450 dark:text-gray-500">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />

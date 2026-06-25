@@ -20,6 +20,7 @@ interface CategoryRow {
   image_url?: string | null;
   sort_order?: number | null;
   active?: boolean | null;
+  active_sort_preference?: string | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -34,6 +35,7 @@ const mapCategory = (row: CategoryRow): Category => ({
   imageUrl: row.image_url || undefined,
   sortOrder: row.sort_order || 0,
   active: row.active ?? true,
+  activeSortPreference: row.active_sort_preference || undefined,
   deletedAt: row.deleted_at || undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at
@@ -146,6 +148,7 @@ export const updateCategory = async (id: string, category: Partial<Category>): P
     if (category.imageUrl !== undefined) updatePayload.image_url = category.imageUrl;
     if (category.sortOrder !== undefined) updatePayload.sort_order = category.sortOrder;
     if (category.active !== undefined) updatePayload.active = category.active;
+    if (category.activeSortPreference !== undefined) updatePayload.active_sort_preference = category.activeSortPreference;
 
     const { data, error } = await supabase
       .from('categories')
@@ -170,6 +173,11 @@ export const updateCategory = async (id: string, category: Partial<Category>): P
 
 export const deleteCategory = async (id: string): Promise<void> => {
   try {
+    // Never allow deleting the system "shop" category
+    if (id === '00000000-0000-4000-8000-000000000099') {
+      throw new Error('The system "All Products" category cannot be deleted.');
+    }
+
     const supabase = await createClient();
     const { data: catData } = await supabase
       .from('categories')

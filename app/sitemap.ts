@@ -15,8 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 1. Fetch products and categories
   const { data: products } = await supabaseAdmin
     .from('products')
-    .select('slug, updated_at, name')
-    .eq('active', true);
+    .select('slug, updated_at, name');
 
   const { data: categories } = await supabaseAdmin
     .from('categories')

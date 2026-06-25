@@ -217,7 +217,7 @@ export default function PostReviewModal({ isOpen, onClose, onSuccess, editProof 
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Attach to Product (Optional)</label>
                 <select value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)} className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0f0f1b]/50 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white focus:border-[#e94560] focus:outline-none transition-all">
                   <option value="">General Store Review (No Product)</option>
-                  {products.filter(p => p.active).map((p) => (
+                  {products.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
@@ -309,11 +309,11 @@ export default function PostReviewModal({ isOpen, onClose, onSuccess, editProof 
                     />
                   </div>
                   <div className="max-h-48 overflow-y-auto p-2">
-                    {products.filter(p => p.active).length === 0 && (
-                      <p className="text-xs text-gray-400 italic text-center py-4">No active products found</p>
+                    {products.length === 0 && (
+                      <p className="text-xs text-gray-400 italic text-center py-4">No products found</p>
                     )}
                     {(() => {
-                      const filtered = products.filter(p => p.active && (!productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())));
+                      const filtered = products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()));
                       if (filtered.length === 0 && productSearch) {
                         return <p className="text-xs text-gray-400 italic text-center py-4">No products match &quot;{productSearch}&quot;</p>;
                       }

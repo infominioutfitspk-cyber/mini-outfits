@@ -87,8 +87,19 @@ This app runs across ANY domain (localhost, custom domain, production). Never ha
    - `settings` — settings update
    - Use `unstable_cache` with these tags for DB-backed caching
 
-7. **Every new migration MUST be merged into `supabase/schema/SUPER_MASTER_SCHEMA.sql` immediately.**  
-   The master schema is the single source of truth. Never create a migration file without also updating the master schema.
+6. **ALWAYS update SUPER_MASTER_SCHEMA.sql for EVERY migration — no exceptions.**
+   - Every schema change (columns, tables, indexes, policies, triggers, functions, RLS, storage rules, auth config) must be reflected in `supabase/schema/SUPER_MASTER_SCHEMA.sql`
+   - **Update BEFORE writing the migration** — master schema is the source of truth, migration follows it
+   - This applies to: `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, `CREATE INDEX`, `DROP INDEX`, `CREATE POLICY`, `DROP POLICY`, `CREATE FUNCTION`, `CREATE TRIGGER`, storage bucket config, auth settings — absolutely everything
+   - Keep the schema version (top comment) and "Updated" date header current
+
+7. **All Supabase admin actions via Management API only.**
+   - Never use Supabase CLI (`supabase db push`, `supabase migration` etc.)
+   - Never use direct Postgres connection strings for schema changes
+   - All operations must use `SUPABASE_MGMT_TOKEN` from `.env.local` via `POST https://api.supabase.com/v1/projects/{ref}/sql`
+   - Covers: schema migrations, storage rules, RLS policies, triggers, functions, webhooks, auth config, and any other DDL/DML changes
+   - Pattern: write SQL in a Node.js script file, execute with `https.request()`, handle errors
+   - The management token is in `.env.local` as `SUPABASE_MGMT_TOKEN`
 <!-- END:db-rules -->
 
 <!-- BEGIN:social-proof-guidelines -->

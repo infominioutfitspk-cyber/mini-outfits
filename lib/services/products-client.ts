@@ -58,7 +58,6 @@ const mapClientProduct = (row: any): Product => {
     hasVariants: row.has_variants ?? false,
     isService: row.is_service ?? false,
     isFeatured: row.is_featured ?? false,
-    active: row.active ?? true,
     enableSwatches: row.enable_swatches ?? true,
     showSwatchesOnArchive: row.show_swatches_on_archive ?? true,
     customBadgeId: row.custom_badge_id || undefined,
@@ -69,6 +68,7 @@ const mapClientProduct = (row: any): Product => {
     modifiers: [],
     rating: row.rating ? parseFloat(row.rating.toString()) : undefined,
     reviewsCount: row.reviews_count || 0,
+    sortOrder: row.sort_order || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -80,7 +80,6 @@ export const getProductsClient = async (categoryId?: string): Promise<Product[]>
     let query = supabase
       .from('products')
       .select('*, product_images(*), product_variants(*), categories!category_id(*)')
-      .eq('active', true)
       .is('deleted_at', null);
 
     if (categoryId) {
@@ -105,7 +104,6 @@ export const getProductsByIdsClient = async (ids: string[]): Promise<Product[]> 
     const { data, error } = await supabase
       .from('products')
       .select('*, product_images(*), product_variants(*), categories!category_id(*)')
-      .eq('active', true)
       .is('deleted_at', null)
       .in('id', ids);
 

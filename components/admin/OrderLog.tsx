@@ -524,8 +524,7 @@ export default function OrderLog({ initialOrders, settings }: OrderLogProps) {
                     <th className="py-3 px-4 md:py-4 md:px-6 hidden md:table-cell">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80">
-                  {filteredOrders.map(order => (
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80">{filteredOrders.map(order => (
                     <tr 
                       key={order.id} 
                       onClick={() => setSelectedOrderId(order.id)}

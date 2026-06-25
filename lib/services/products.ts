@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { Product, ProductImage, ProductVariant, ProductModifier, Category, ProductCategoryRelation } from '@/lib/types';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
@@ -81,7 +82,6 @@ interface DBProductRow {
   has_variants?: boolean | null;
   is_service?: boolean | null;
   is_featured?: boolean | null;
-  active?: boolean | null;
   enable_swatches?: boolean | null;
   show_swatches_on_archive?: boolean | null;
   tags?: string[] | null;
@@ -101,6 +101,7 @@ interface DBProductRow {
   flash_sale_end_date?: string | null;
   flash_sale_discount_type?: string | null;
   flash_sale_discount_value?: number | string | null;
+  sort_order?: number | null;
   meta_sync_status?: string | null;
   meta_sync_error?: string | null;
   meta_last_synced_at?: string | null;
@@ -169,8 +170,6 @@ const mapProduct = (row: DBProductRow): Product => {
   const productCategories: ProductCategoryRelation[] = (row.product_categories ?? []).map((pc: any) => ({
     productId: pc.product_id,
     categoryId: pc.category_id,
-    isFeatured: pc.is_featured ?? false,
-    isVisible: pc.is_visible ?? true,
     category: pc.categories ? {
       id: pc.categories.id,
       name: pc.categories.name,
@@ -200,7 +199,6 @@ const mapProduct = (row: DBProductRow): Product => {
     hasVariants: row.has_variants ?? false,
     isService: row.is_service ?? false,
     isFeatured: row.is_featured ?? false,
-    active: row.active ?? true,
     enableSwatches: row.enable_swatches ?? true,
     showSwatchesOnArchive: row.show_swatches_on_archive ?? true,
     customBadgeId: row.custom_badge_id || undefined,
@@ -233,6 +231,7 @@ const mapProduct = (row: DBProductRow): Product => {
     meta_sync_status: row.meta_sync_status as any || 'pending',
     meta_sync_error: row.meta_sync_error || undefined,
     meta_last_synced_at: row.meta_last_synced_at || undefined,
+    sortOrder: row.sort_order || 0,
     deletedAt: row.deleted_at || undefined,
     inventoryThreshold: row.inventory_threshold || 0,
     productCategories,
@@ -481,7 +480,6 @@ const fetchProducts = async (categoryId?: string): Promise<Product[]> => {
     let query = staticSupabase
       .from('products')
       .select('*, product_images(*), product_variants(*), product_modifiers(*), categories!category_id(*), product_categories(*, categories(*)), badges(*), size_guides(*)')
-      .eq('active', true)
       .is('deleted_at', null);
 
     if (categoryId) {
@@ -521,7 +519,6 @@ const fetchRelatedProducts = async (productId: string, categoryId?: string, limi
       const { data, error } = await staticSupabase
         .from('products')
         .select('*, product_images(*), product_variants(*), product_modifiers(*), categories!category_id(*), product_categories(*, categories(*)), badges(*), size_guides(*)')
-        .eq('active', true)
         .is('deleted_at', null)
         .eq('category_id', categoryId)
         .neq('id', productId)
@@ -541,7 +538,6 @@ const fetchRelatedProducts = async (productId: string, categoryId?: string, limi
       const { data, error } = await staticSupabase
         .from('products')
         .select('*, product_images(*), product_variants(*), product_modifiers(*), categories!category_id(*), product_categories(*, categories(*)), badges(*), size_guides(*)')
-        .eq('active', true)
         .is('deleted_at', null)
         .not('id', 'in', `(${excludeIds.join(',')})`)
         .order('sort_order', { ascending: true })
@@ -578,7 +574,6 @@ const fetchProductBySlug = async (slug: string): Promise<Product | null> => {
       .from('products')
       .select('*, product_images(*), product_variants(*), product_modifiers(*), categories!category_id(*), product_categories(*, categories(*)), badges(*), size_guides(*)')
       .eq('slug', slug)
-      .eq('active', true)
       .is('deleted_at', null)
       .maybeSingle();
 
@@ -725,7 +720,6 @@ export const createProduct = async (
         has_variants: product.hasVariants,
         is_service: product.isService,
         is_featured: product.isFeatured,
-        active: product.active,
         enable_swatches: product.enableSwatches,
         show_swatches_on_archive: product.showSwatchesOnArchive,
         custom_badge_id: product.customBadgeId || null,
@@ -803,27 +797,21 @@ export const createProduct = async (
     }
 
     // 4b. Sync Product Category relations
-    let relationsToInsert = product.productCategories;
-    if (relationsToInsert === undefined && product.categoryId !== undefined) {
-      relationsToInsert = [{
-        productId: productId,
-        categoryId: product.categoryId,
-        isFeatured: product.isFeatured ?? false,
-        isVisible: product.active ?? true
-      }];
+    let categoryIdsToInsert = product.productCategories?.map(pc => pc.categoryId) || [];
+    if (categoryIdsToInsert.length === 0 && product.categoryId) {
+      categoryIdsToInsert.push(product.categoryId);
+    }
+    if (!categoryIdsToInsert.includes('00000000-0000-4000-8000-000000000099')) {
+      categoryIdsToInsert.push('00000000-0000-4000-8000-000000000099');
     }
 
-    if (relationsToInsert && relationsToInsert.length > 0) {
-      const { error: pcInsErr } = await supabase
-        .from('product_categories')
-        .insert(relationsToInsert.map(pc => ({
-          product_id: productId,
-          category_id: pc.categoryId,
-          is_featured: pc.isFeatured,
-          is_visible: pc.isVisible
-        })));
-      if (pcInsErr) throw pcInsErr;
-    }
+    const { error: pcInsErr } = await supabase
+      .from('product_categories')
+      .insert(categoryIdsToInsert.map(categoryId => ({
+        product_id: productId,
+        category_id: categoryId
+      })));
+    if (pcInsErr) throw pcInsErr;
 
     // 5. Get final updated product structure
     const updatedProduct = await getProductById(productId);
@@ -862,7 +850,6 @@ export const updateProduct = async (
     if (product.hasVariants !== undefined) updatePayload.has_variants = product.hasVariants;
     if (product.isService !== undefined) updatePayload.is_service = product.isService;
     if (product.isFeatured !== undefined) updatePayload.is_featured = product.isFeatured;
-    if (product.active !== undefined) updatePayload.active = product.active;
     if (product.enableSwatches !== undefined) updatePayload.enable_swatches = product.enableSwatches;
     if (product.showSwatchesOnArchive !== undefined) updatePayload.show_swatches_on_archive = product.showSwatchesOnArchive;
     if (product.customBadgeId !== undefined) updatePayload.custom_badge_id = product.customBadgeId || null;
@@ -958,45 +945,29 @@ export const updateProduct = async (
       if (modInsError) throw modInsError;
     }
 
-    // Sync multi category relations
-    const productCategories = product.productCategories;
-    if (productCategories !== undefined) {
-      const { error: pcDelError } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('product_id', id);
-      if (pcDelError) throw pcDelError;
+    // Sync multi category relations — always include "shop" system category
+    let categoryIdsToUpdate = product.productCategories?.map(pc => pc.categoryId) || [];
+    if (categoryIdsToUpdate.length === 0 && product.categoryId) {
+      categoryIdsToUpdate.push(product.categoryId);
+    }
+    if (!categoryIdsToUpdate.includes('00000000-0000-4000-8000-000000000099')) {
+      categoryIdsToUpdate.push('00000000-0000-4000-8000-000000000099');
+    }
 
-      if (productCategories.length > 0) {
-        const { error: pcInsError } = await supabase
-          .from('product_categories')
-          .insert(productCategories.map(pc => ({
-            product_id: id,
-            category_id: pc.categoryId,
-            is_featured: pc.isFeatured,
-            is_visible: pc.isVisible
-          })));
-        if (pcInsError) throw pcInsError;
-      }
-    } else if (product.categoryId !== undefined) {
-      // backward-compatibility fallback
-      const { error: pcDelError } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('product_id', id);
-      if (pcDelError) throw pcDelError;
+    const { error: pcDelError } = await supabase
+      .from('product_categories')
+      .delete()
+      .eq('product_id', id);
+    if (pcDelError) throw pcDelError;
 
-      if (product.categoryId) {
-        const { error: pcInsError } = await supabase
-          .from('product_categories')
-          .insert({
-            product_id: id,
-            category_id: product.categoryId,
-            is_featured: product.isFeatured ?? false,
-            is_visible: product.active ?? true
-          });
-        if (pcInsError) throw pcInsError;
-      }
+    if (categoryIdsToUpdate.length > 0) {
+      const { error: pcInsError } = await supabase
+        .from('product_categories')
+        .insert(categoryIdsToUpdate.map(categoryId => ({
+          product_id: id,
+          category_id: categoryId
+        })));
+      if (pcInsError) throw pcInsError;
     }
 
     // 5. Get final updated product structure
@@ -1030,7 +1001,6 @@ export const updateProductFields = async (
     if (fields.hasVariants !== undefined) updatePayload.has_variants = fields.hasVariants;
     if (fields.isService !== undefined) updatePayload.is_service = fields.isService;
     if (fields.isFeatured !== undefined) updatePayload.is_featured = fields.isFeatured;
-    if (fields.active !== undefined) updatePayload.active = fields.active;
     if (fields.enableSwatches !== undefined) updatePayload.enable_swatches = fields.enableSwatches;
     if (fields.showSwatchesOnArchive !== undefined) updatePayload.show_swatches_on_archive = fields.showSwatchesOnArchive;
     if (fields.customBadgeId !== undefined) updatePayload.custom_badge_id = fields.customBadgeId || null;
@@ -1046,6 +1016,7 @@ export const updateProductFields = async (
     if (fields.rating !== undefined) updatePayload.rating = fields.rating;
     if (fields.reviewsCount !== undefined) updatePayload.reviews_count = fields.reviewsCount;
     if (fields.inventoryThreshold !== undefined) updatePayload.inventory_threshold = fields.inventoryThreshold;
+    if (fields.sortOrder !== undefined) updatePayload.sort_order = fields.sortOrder;
 
     // Get product slug to revalidate properly
     const { data: prodData } = await supabase
@@ -1061,43 +1032,29 @@ export const updateProductFields = async (
 
     if (error) throw error;
 
-    // Sync multi category relations if provided
-    const productCategories = fields.productCategories;
-    if (productCategories !== undefined) {
-      const { error: pcDelError } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('product_id', id);
-      if (pcDelError) throw pcDelError;
-
-      if (productCategories.length > 0) {
-        const { error: pcInsError } = await supabase
-          .from('product_categories')
-          .insert(productCategories.map(pc => ({
-            product_id: id,
-            category_id: pc.categoryId,
-            is_featured: pc.isFeatured,
-            is_visible: pc.isVisible
-          })));
-        if (pcInsError) throw pcInsError;
+    // Sync multi category relations if provided — always include "shop" system category
+    if (fields.productCategories !== undefined || fields.categoryId !== undefined) {
+      let categoryIdsToUpdate = fields.productCategories?.map(pc => pc.categoryId) || [];
+      if (categoryIdsToUpdate.length === 0 && fields.categoryId) {
+        categoryIdsToUpdate.push(fields.categoryId);
       }
-    } else if (fields.categoryId !== undefined) {
-      // backward-compatibility fallback
+      if (!categoryIdsToUpdate.includes('00000000-0000-4000-8000-000000000099')) {
+        categoryIdsToUpdate.push('00000000-0000-4000-8000-000000000099');
+      }
+
       const { error: pcDelError } = await supabase
         .from('product_categories')
         .delete()
         .eq('product_id', id);
       if (pcDelError) throw pcDelError;
 
-      if (fields.categoryId) {
+      if (categoryIdsToUpdate.length > 0) {
         const { error: pcInsError } = await supabase
           .from('product_categories')
-          .insert({
+          .insert(categoryIdsToUpdate.map(categoryId => ({
             product_id: id,
-            category_id: fields.categoryId,
-            is_featured: fields.isFeatured ?? false,
-            is_visible: fields.active ?? true
-          });
+            category_id: categoryId
+          })));
         if (pcInsError) throw pcInsError;
       }
     }
@@ -1305,40 +1262,10 @@ export const updateProductVariantFields = async (
 export const updateProductCategoryRelationFields = async (
   productId: string,
   categoryId: string,
-  fields: { isFeatured?: boolean; isVisible?: boolean }
+  _fields: Record<string, never>
 ): Promise<void> => {
-  try {
-    const supabase = await createClient();
-    const updatePayload: Record<string, any> = {};
-    if (fields.isFeatured !== undefined) updatePayload.is_featured = fields.isFeatured;
-    if (fields.isVisible !== undefined) updatePayload.is_visible = fields.isVisible;
-
-    const { error } = await supabase
-      .from('product_categories')
-      .update(updatePayload)
-      .eq('product_id', productId)
-      .eq('category_id', categoryId);
-
-    if (error) throw error;
-
-    const { data: prodData } = await supabase
-      .from('products')
-      .select('slug')
-      .eq('id', productId)
-      .single();
-
-    if (prodData?.slug) {
-      try {
-        await revalidateProduct(prodData.slug);
-      } catch (revalErr) {
-        console.error('[products] revalidateProduct failed during updateProductCategoryRelationFields:', revalErr);
-      }
-    }
-    (revalidateTag as any)('products');
-  } catch (error) {
-    console.error('[products] updateProductCategoryRelationFields failed:', error);
-    throw error;
-  }
+  // No-op after schema simplification — product_categories has no more per-relation fields
+  return;
 };
 
 export const addProductToCategory = async (
@@ -1353,9 +1280,7 @@ export const addProductToCategory = async (
       .from('product_categories')
       .insert({
         product_id: productId,
-        category_id: categoryId,
-        is_featured: false,
-        is_visible: true
+        category_id: categoryId
       });
 
     if (relError) throw relError;
@@ -1394,6 +1319,9 @@ export const removeProductFromCategory = async (
   categoryId: string
 ): Promise<void> => {
   try {
+    // Never allow removing from the "shop" system category
+    if (categoryId === '00000000-0000-4000-8000-000000000099') return;
+
     const supabase = await createClient();
 
     // Delete relation from junction table
@@ -1439,6 +1367,24 @@ export const removeProductFromCategory = async (
     (revalidateTag as any)('categories');
   } catch (error) {
     console.error('[products] removeProductFromCategory failed:', error);
+    throw error;
+  }
+};
+
+export const updateProductSortOrders = async (productIds: string[]): Promise<void> => {
+  if (!productIds || productIds.length === 0) return;
+  try {
+    await Promise.all(
+      productIds.map((id, idx) =>
+        supabaseAdmin
+          .from('products')
+          .update({ sort_order: idx + 1 })
+          .eq('id', id)
+      )
+    );
+    (revalidateTag as any)('products');
+  } catch (error) {
+    console.error('[products] updateProductSortOrders failed:', error);
     throw error;
   }
 };

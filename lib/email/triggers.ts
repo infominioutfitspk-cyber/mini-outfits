@@ -231,7 +231,7 @@ export async function checkLowStock(items: CartItem[]) {
       if (!productId) continue;
 
       const product = await getProductById(productId);
-      if (!product || !product.active) continue;
+      if (!product) continue;
 
       if (product.hasVariants && item.selectedVariant) {
         // Find the specific variant to check its updated stock

@@ -23,7 +23,7 @@ interface StyleGuideProps {
 }
 
 function StyleGuide({ settings, products }: StyleGuideProps) {
-  const activeProduct = products.find(p => p.active) || products[0];
+  const activeProduct = products[0];
   const currencySymbol = settings.currencySymbol || 'Rs.';
 
   return (
@@ -470,7 +470,7 @@ export default function PreviewClient({
   }, [productsList, sections, settings]);
 
   const currentProduct = React.useMemo(() => {
-    const defaultProduct = liveProducts.find(p => p.active) || liveProducts[0];
+    const defaultProduct = liveProducts[0];
     if (!activeProductSlug) return defaultProduct;
     return liveProducts.find(p => p.slug === activeProductSlug) || defaultProduct;
   }, [liveProducts, activeProductSlug]);

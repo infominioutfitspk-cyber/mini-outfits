@@ -246,7 +246,12 @@ export default function CategoryManager({ initialCategories, aiEnabled, storeUrl
           <div key={cat.id} className="bg-white dark:bg-[#16162a] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-between space-y-4 text-gray-900 dark:text-white transition-colors">
             <Link href={`/admin/categories/${cat.id}`} className="group block flex-1">
               <div className="flex justify-between items-start">
-                <h3 className="font-bold text-gray-950 dark:text-white text-base group-hover:text-[#e94560] transition-colors">{cat.name}</h3>
+                <h3 className="font-bold text-gray-950 dark:text-white text-base group-hover:text-[#e94560] transition-colors">
+                  {cat.name}
+                  {cat.id === '00000000-0000-4000-8000-000000000099' && (
+                    <span className="ml-2 text-[9px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 px-1.5 py-0.5 rounded uppercase">System</span>
+                  )}
+                </h3>
                 <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-md ${
                   cat.active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-505'
                 }`}>
@@ -255,7 +260,7 @@ export default function CategoryManager({ initialCategories, aiEnabled, storeUrl
               </div>
               <p className="text-xs text-gray-500 font-semibold mt-1">Slug: {cat.slug}</p>
               {cat.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: cat.description }}></p>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-2.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: cat.description }} />
               )}
             </Link>
 
@@ -274,13 +279,15 @@ export default function CategoryManager({ initialCategories, aiEnabled, storeUrl
                 <Edit className="h-3.5 w-3.5" />
                 <span>Edit</span>
               </button>
-              <button
-                onClick={() => handleDelete(cat.id)}
-                className="flex items-center gap-1 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/10 px-3 py-2 rounded-lg cursor-pointer"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Delete</span>
-              </button>
+              {cat.id !== '00000000-0000-4000-8000-000000000099' && (
+                <button
+                  onClick={() => handleDelete(cat.id)}
+                  className="flex items-center gap-1 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/10 px-3 py-2 rounded-lg cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Delete</span>
+                </button>
+              )}
             </div>
           </div>
         ))}

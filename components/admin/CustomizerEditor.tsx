@@ -4,7 +4,7 @@ import React, { useState, useTransition, useMemo, useEffect, useRef } from 'reac
 import { useRouter } from 'next/navigation';
 import { Product, Category, StoreSettings, Review, HomepageSection } from '@/lib/types';
 import { 
-  Plus, Trash2, ChevronUp, ChevronDown, Smartphone, Tablet, Monitor, GripVertical, Settings, Check, RefreshCw, Eye, EyeOff, Lock, ChevronLeft
+  Plus, Trash2, ChevronUp, ChevronDown, Smartphone, Tablet, Monitor, GripVertical, Settings, Check, RefreshCw, Eye, EyeOff, Lock, ChevronLeft, X
 } from '@/components/common/Icons';
 import { 
   updateHomepageSection, 
@@ -56,6 +56,7 @@ export default function CustomizerEditor({
     initialSections.length > 0 ? initialSections[0].id : null
   );
   const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('mobile');
+  const [mobileTab, setMobileTab] = useState<'preview' | 'sections' | 'settings'>('preview');
   const [isPending, startTransition] = useTransition();
 
   // New states for page selectors & global settings
@@ -70,7 +71,7 @@ export default function CustomizerEditor({
   const [activeProductSlug, setActiveProductSlug] = useState<string | null>(null);
 
   const currentProduct = useMemo(() => {
-    const defaultProduct = localProducts.find(p => p.active) || localProducts[0];
+    const defaultProduct = localProducts[0];
     if (!activeProductSlug) return defaultProduct;
     return localProducts.find(p => p.slug === activeProductSlug) || defaultProduct;
   }, [localProducts, activeProductSlug]);
@@ -437,29 +438,29 @@ export default function CustomizerEditor({
     <div className="fixed inset-0 z-[100] w-screen h-screen overflow-hidden flex flex-col bg-gray-50 dark:bg-[#0f0f1b] select-none text-gray-900 dark:text-gray-100">
       
       {/* 1. TOP HEADER BAR */}
-      <header className="h-16 bg-[#1a1a2e] text-white border-b border-white/10 flex items-center justify-between px-6 z-50 shadow-md flex-shrink-0">
+      <header className="h-16 bg-[#1a1a2e] text-white border-b border-white/10 flex items-center justify-between px-3 sm:px-6 z-50 shadow-md flex-shrink-0 gap-1">
         {/* Left: Back to Dashboard & Page Selector */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 min-w-0">
           <button
             onClick={() => router.push('/admin/dashboard')}
-            className="flex items-center gap-1.5 text-white/80 hover:text-white px-3 py-1.5 hover:bg-white/5 rounded-xl transition-all font-bold text-xs cursor-pointer select-none"
+            className="flex items-center gap-1.5 text-white/80 hover:text-white px-2 sm:px-3 py-1.5 hover:bg-white/5 rounded-xl transition-all font-bold text-xs cursor-pointer select-none shrink-0"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Dashboard
+            <span className="hidden sm:inline">Back to Dashboard</span>
           </button>
-          <div className="w-[1px] h-6 bg-white/10 hidden sm:block" />
-          <div className="hidden sm:flex flex-col items-start leading-none gap-0.5 mr-2">
+          <div className="w-[1px] h-6 bg-white/10 hidden sm:block shrink-0" />
+          <div className="hidden sm:flex flex-col items-start leading-none gap-0.5 mr-2 shrink-0">
             <span className="text-xs font-black tracking-wider text-white uppercase">{storeSettings.storeName || 'Zaynahs'}</span>
             <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Theme Customizer</span>
           </div>
-          <div className="w-[1px] h-6 bg-white/10 hidden sm:block" />
+          <div className="w-[1px] h-6 bg-white/10 hidden sm:block shrink-0" />
           
           {/* Page Selector dropdown */}
           <div 
-            className="flex items-center border px-3 py-1.5 rounded-xl gap-2 text-xs font-bold text-white"
+            className="flex items-center border px-2 sm:px-3 py-1.5 rounded-xl gap-1 sm:gap-2 text-xs font-bold text-white min-w-0"
             style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)', borderColor: 'rgba(0, 0, 0, 0.15)' }}
           >
-            <span className="text-white/80 hidden md:inline">Page:</span>
+            <span className="text-white/80 hidden md:inline shrink-0">Page:</span>
             <select
               value={activePage}
               onChange={(e) => {
@@ -492,7 +493,7 @@ export default function CustomizerEditor({
                   setActiveSubTab('');
                 }
               }}
-              className="bg-transparent border-none focus:ring-0 text-white font-black cursor-pointer outline-none"
+              className="bg-transparent border-none focus:ring-0 text-white font-black cursor-pointer outline-none truncate max-w-[100px] sm:max-w-none"
             >
               <option value="home" className="bg-[#1a1a2e] text-white">Home Page</option>
               <option value="shop" className="bg-[#1a1a2e] text-white">Shop Page</option>
@@ -506,57 +507,57 @@ export default function CustomizerEditor({
 
         {/* Center: Viewport Switcher */}
         <div 
-          className="flex border p-0.5 rounded-xl"
+          className="flex border p-0.5 rounded-xl shrink-0"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)', borderColor: 'rgba(0, 0, 0, 0.15)' }}
         >
           <button
             onClick={() => setViewportMode('desktop')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1 sm:gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
               viewportMode === 'desktop'
                 ? 'bg-[#e94560] text-white shadow-sm'
                 : 'text-white/75 hover:text-white'
             }`}
           >
             <Monitor className="h-3.5 w-3.5" />
-            Desktop
+            <span className="hidden sm:inline">Desktop</span>
           </button>
           <button
             onClick={() => setViewportMode('tablet')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1 sm:gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
               viewportMode === 'tablet'
                 ? 'bg-[#e94560] text-white shadow-sm'
                 : 'text-white/75 hover:text-white'
             }`}
           >
             <Tablet className="h-3.5 w-3.5" />
-            Tablet
+            <span className="hidden sm:inline">Tablet</span>
           </button>
           <button
             onClick={() => setViewportMode('mobile')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1 sm:gap-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
               viewportMode === 'mobile'
                 ? 'bg-[#e94560] text-white shadow-sm'
                 : 'text-white/75 hover:text-white'
             }`}
           >
             <Smartphone className="h-3.5 w-3.5" />
-            Mobile
+            <span className="hidden sm:inline">Mobile</span>
           </button>
         </div>
 
         {/* Right: Save Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
           <button
             onClick={handleSaveLayout}
             disabled={isPending}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#e94560] hover:bg-[#d83550] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 px-2 sm:px-4 py-2 bg-[#e94560] hover:bg-[#d83550] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             {isPending ? (
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Check className="h-3.5 w-3.5" />
             )}
-            Save Layout
+            <span className="hidden sm:inline">Save Layout</span>
           </button>
         </div>
       </header>
@@ -565,11 +566,18 @@ export default function CustomizerEditor({
       <div className="flex-grow flex flex-row overflow-hidden h-[calc(100vh-4rem)]">
         
         {/* LEFT COLUMN: Sections & Add Widgets */}
-        <aside className="w-80 flex-shrink-0 flex flex-col bg-white dark:bg-[#16162a] border-r border-gray-200 dark:border-gray-800 overflow-hidden h-full">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-white/2 bg-surface-2 flex-shrink-0">
+        <aside className={`w-80 flex-shrink-0 flex flex-col bg-white dark:bg-[#16162a] border-r border-gray-200 dark:border-gray-800 overflow-hidden h-full ${mobileTab === 'sections' ? 'fixed inset-0 z-50' : 'hidden'} md:flex md:static md:z-auto`}>
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-white/2 bg-surface-2 flex-shrink-0 flex items-center justify-between">
             <h3 className="font-extrabold text-xs tracking-wider text-gray-900 dark:text-white uppercase">
               {activePage === 'home' ? 'Sections Stack' : `${activePage.replace('_', ' ')} Properties`}
             </h3>
+            <button
+              onClick={() => setMobileTab('preview')}
+              className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-all cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -1011,7 +1019,7 @@ export default function CustomizerEditor({
         </aside>
 
         {/* CENTER COLUMN: Fluid Live Preview */}
-        <main className="flex-grow bg-gray-100 dark:bg-[#0f0f1b]/30 overflow-hidden flex flex-col h-full">
+        <main className={`flex-grow bg-gray-100 dark:bg-[#0f0f1b]/30 overflow-hidden flex flex-col h-full ${mobileTab !== 'preview' ? 'hidden' : ''} md:flex`}>
           <div 
             ref={previewContainerRef}
             className="flex-1 overflow-auto p-6 flex justify-center items-center h-full"
@@ -1168,12 +1176,21 @@ export default function CustomizerEditor({
         </main>
 
         {/* RIGHT COLUMN: Settings Adjustment Panel */}
-        <aside className="w-96 flex-shrink-0 flex flex-col bg-white dark:bg-[#16162a] border-l border-gray-200 dark:border-gray-800 overflow-hidden h-full">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-white/2 bg-surface-2 flex-shrink-0 flex items-center gap-1.5">
-            <Settings className="h-4 w-4 text-[#e94560]" />
-            <h3 className="font-extrabold text-xs tracking-wider text-gray-900 dark:text-white uppercase">
-              {activePage === 'home' ? 'Section Settings' : `${activePage.replace('_', ' ')} Settings`}
-            </h3>
+        <aside className={`w-96 flex-shrink-0 flex flex-col bg-white dark:bg-[#16162a] border-l border-gray-200 dark:border-gray-800 overflow-hidden h-full ${mobileTab === 'settings' ? 'fixed inset-0 z-50' : 'hidden'} md:flex md:static md:z-auto`}>
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-white/2 bg-surface-2 flex-shrink-0 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Settings className="h-4 w-4 text-[#e94560]" />
+              <h3 className="font-extrabold text-xs tracking-wider text-gray-900 dark:text-white uppercase">
+                {activePage === 'home' ? 'Section Settings' : `${activePage.replace('_', ' ')} Settings`}
+              </h3>
+            </div>
+            <button
+              onClick={() => setMobileTab('preview')}
+              className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-all cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-5">
@@ -1301,6 +1318,7 @@ export default function CustomizerEditor({
                     <ProductGridSettings
                       section={activeSection}
                       categories={categories}
+                      products={products}
                       onUpdateSection={(updates) => handleUpdateSection(activeSection.id, updates)}
                     />
                   )}
@@ -1480,8 +1498,39 @@ export default function CustomizerEditor({
         </aside>
 
       </div>
-      
-      {/* 3. MEDIA SELECTOR MODAL CONTAINER */}
+
+      {/* 3. MOBILE BOTTOM TAB BAR */}
+      <div className="md:hidden flex items-center justify-around bg-white dark:bg-[#16162a] border-t border-gray-200 dark:border-gray-800 px-2 py-2 flex-shrink-0">
+        <button
+          onClick={() => setMobileTab('sections')}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+            mobileTab === 'sections' ? 'text-[#e94560] bg-[#e94560]/10' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Settings className="h-4 w-4" />
+          Sections
+        </button>
+        <button
+          onClick={() => setMobileTab('preview')}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+            mobileTab === 'preview' ? 'text-[#e94560] bg-[#e94560]/10' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Smartphone className="h-4 w-4" />
+          Preview
+        </button>
+        <button
+          onClick={() => setMobileTab('settings')}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+            mobileTab === 'settings' ? 'text-[#e94560] bg-[#e94560]/10' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </button>
+      </div>
+
+      {/* 4. MEDIA SELECTOR MODAL CONTAINER */}
       <MediaSelectorModal
         isOpen={isMediaModalOpen}
         onClose={() => setIsMediaModalOpen(false)}

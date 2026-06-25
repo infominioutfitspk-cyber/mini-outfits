@@ -200,17 +200,28 @@ export default function ShopPage({
   // Read URL query parameters
   const urlCategorySlug = searchParams.get('category') || undefined;
   const urlSearchQuery = searchParams.get('search') || '';
+  const urlPage = parseInt(searchParams.get('page') || '1', 10);
+  const PAGE_SIZE = 12;
 
   // Calculate matching category ID from slug
+  const SYSTEM_CATEGORY_ID = '00000000-0000-4000-8000-000000000099';
+
+  // Filter out system "Shop" category from user-facing list
+  const displayCategories = useMemo(() => {
+    return categories.filter(c => c.id !== SYSTEM_CATEGORY_ID);
+  }, [categories]);
+
   const activeCategory = useMemo(() => {
     if (!urlCategorySlug) return undefined;
-    return categories.find(c => c.slug === urlCategorySlug);
-  }, [urlCategorySlug, categories]);
+    if (urlCategorySlug === 'shop') return undefined;
+    return displayCategories.find(c => c.slug === urlCategorySlug);
+  }, [urlCategorySlug, displayCategories]);
 
   // States
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(activeCategory?.id);
   const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
-  const [sortBy, setSortBy] = useState<string>('newest');
+  const defaultSort = activeCategory?.activeSortPreference || (categories.find(c => c.id === SYSTEM_CATEGORY_ID)?.activeSortPreference) || 'manual';
+  const [sortBy, setSortBy] = useState<string>(defaultSort);
   const [viewMode, setViewMode] = useState<'grid-3' | 'grid-4' | 'list'>('grid-4');
   // Live settings: SSR value shown immediately, overridden by fresh DB fetch on mount
   const { settings: liveSettings } = useSettings(settings);
@@ -247,7 +258,6 @@ export default function ShopPage({
     const colorToHex: Record<string, string> = {};
 
     initialProducts.forEach(product => {
-      if (!product.active) return;
       product.variants?.forEach(variant => {
         if (!variant.active) return;
 
@@ -302,9 +312,19 @@ export default function ShopPage({
   }, [priceLimits]);
 
   useEffect(() => {
-    const cat = categories.find(c => c.slug === urlCategorySlug);
-    setSelectedCategoryId(cat?.id);
-  }, [urlCategorySlug, categories]);
+    if (!urlCategorySlug || urlCategorySlug === 'shop') {
+      setSelectedCategoryId(undefined);
+    } else {
+      const cat = displayCategories.find(c => c.slug === urlCategorySlug);
+      setSelectedCategoryId(cat?.id);
+    }
+  }, [urlCategorySlug, displayCategories]);
+
+  // Sync sort dropdown to active category's admin-configured preference
+  useEffect(() => {
+    const preference = activeCategory?.activeSortPreference || (categories.find(c => c.id === SYSTEM_CATEGORY_ID)?.activeSortPreference) || 'manual';
+    setSortBy(preference);
+  }, [activeCategory, categories]);
 
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
@@ -318,9 +338,10 @@ export default function ShopPage({
   // Sync URL parameters when category or search changes
   const handleCategorySelect = (categoryId: string | undefined) => {
     setSelectedCategoryId(categoryId);
-    const slug = categoryId ? categories.find(c => c.id === categoryId)?.slug : undefined;
+    const slug = categoryId ? displayCategories.find(c => c.id === categoryId)?.slug : undefined;
 
     const params = new URLSearchParams(searchParams.toString());
+    params.delete('page');
     if (slug) {
       params.set('category', slug);
     } else {
@@ -347,7 +368,7 @@ export default function ShopPage({
 
   // Get Featured Products list
   const featuredProducts = useMemo(() => {
-    return initialProducts.filter(p => p.isFeatured && p.active).slice(0, 3);
+    return initialProducts.filter(p => p.isFeatured).slice(0, 3);
   }, [initialProducts]);
 
   // Handle Quick Add to Cart for Featured Products
@@ -447,18 +468,53 @@ export default function ShopPage({
     // Sorting
     if (sortBy === 'newest') {
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else if (sortBy === 'price-asc') {
-      list.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
+    } else if (sortBy === 'oldest') {
+      list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (sortBy === 'price_desc') {
       list.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'title-asc') {
+    } else if (sortBy === 'price_asc') {
+      list.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'alpha_asc') {
       list.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'title-desc') {
+    } else if (sortBy === 'alpha_desc') {
       list.sort((a, b) => b.name.localeCompare(a.name));
     }
 
     return list;
   }, [initialProducts, selectedCategoryId, searchQuery, availability, priceMin, priceMax, sortBy, selectedColors, selectedSizes, selectedMaterials]);
+
+  const [loadMoreLimit, setLoadMoreLimit] = useState(() => Math.max(PAGE_SIZE, (isNaN(urlPage) ? 1 : urlPage) * PAGE_SIZE));
+
+  const displayProducts = useMemo(() => {
+    return filteredProducts.slice(0, loadMoreLimit);
+  }, [filteredProducts, loadMoreLimit]);
+
+  const totalResults = filteredProducts.length;
+  const hasMore = displayProducts.length < totalResults;
+  const currentPage = Math.ceil(displayProducts.length / PAGE_SIZE);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setLoadMoreLimit(PAGE_SIZE);
+  }, [selectedCategoryId, searchQuery, sortBy, availability.onSale, availability.inStock, availability.outStock, priceMin, priceMax, selectedColors.join(','), selectedSizes.join(','), selectedMaterials.join(',')]);
+
+  // Sync loadMoreLimit when URL page param changes (browser nav)
+  useEffect(() => {
+    const page = isNaN(urlPage) ? 1 : Math.max(1, urlPage);
+    setLoadMoreLimit(page * PAGE_SIZE);
+  }, [urlPage]);
+
+  const handleLoadMore = () => {
+    const nextPage = currentPage + 1;
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextPage > 1) {
+      params.set('page', String(nextPage));
+    } else {
+      params.delete('page');
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    setLoadMoreLimit(nextPage * PAGE_SIZE);
+  };
 
   // Reset Filters helper
   const handleClearFilters = () => {
@@ -492,13 +548,13 @@ export default function ShopPage({
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
           >
-            <span>All Categories</span>
+            <span>Shop</span>
             <span className={selectedCategoryId === undefined ? 'text-white/80' : 'text-gray-400'}>
               ({initialProducts.length})
             </span>
           </button>
 
-          {categories.map((category) => {
+          {displayCategories.map((category) => {
             const count = categoryCounts[category.id] || 0;
             const isSelected = selectedCategoryId === category.id;
             return (
@@ -930,7 +986,7 @@ export default function ShopPage({
               </button>
 
               <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-                There are {filteredProducts.length} results in total
+                Showing {displayProducts.length} of {totalResults} results
               </span>
             </div>
 
@@ -986,11 +1042,13 @@ export default function ShopPage({
                   onChange={(e) => setSortBy(e.target.value)}
                   className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#e94560] text-gray-900 dark:text-white shadow-sm"
                 >
-                  <option value="newest">Date, new to old</option>
-                  <option value="price-asc">Price, low to high</option>
-                  <option value="price-desc">Price, high to low</option>
-                  <option value="title-asc">Alphabetically, A-Z</option>
-                  <option value="title-desc">Alphabetically, Z-A</option>
+                  <option value="manual">Manual Order</option>
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="alpha_asc">Alphabetically: A-Z</option>
+                  <option value="alpha_desc">Alphabetically: Z-A</option>
                 </select>
               </div>
             </div>
@@ -1003,7 +1061,7 @@ export default function ShopPage({
 
               {selectedCategoryId && (
                 <span className="inline-flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs px-2.5 py-1 rounded-full font-bold text-gray-800 dark:text-gray-200">
-                  Category: {categories.find(c => c.id === selectedCategoryId)?.name}
+                  Category: {displayCategories.find(c => c.id === selectedCategoryId)?.name || 'Shop'}
                   <button onClick={() => handleCategorySelect(undefined)} className="hover:text-red-500 shrink-0"><X className="h-3 w-3" /></button>
                 </span>
               )}
@@ -1087,7 +1145,7 @@ export default function ShopPage({
           ) : viewMode === 'list' ? (
             // Horizontal List Layout
             <div className="flex flex-col gap-4">
-              {filteredProducts.map(product => (
+              {displayProducts.map(product => (
                 <ShopProductListCard
                   key={product.id}
                   product={product}
@@ -1102,7 +1160,7 @@ export default function ShopPage({
                 ? 'sm:grid-cols-2 lg:grid-cols-3'
                 : 'sm:grid-cols-3 lg:grid-cols-4'
               }`}>
-              {filteredProducts.map(product => (
+              {displayProducts.map(product => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -1110,6 +1168,18 @@ export default function ShopPage({
                   settings={activeSettings}
                 />
               ))}
+            </div>
+          )}
+
+          {hasMore && (
+            <div className="w-full flex items-center justify-center mt-8">
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                className="px-8 py-3 text-sm font-bold uppercase tracking-wider rounded-full bg-[#e94560] text-white hover:bg-[#d8344f] hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-sm cursor-pointer"
+              >
+                Load More ({totalResults - displayProducts.length} remaining)
+              </button>
             </div>
           )}
         </div>

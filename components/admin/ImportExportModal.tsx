@@ -322,7 +322,7 @@ export default function ImportExportModal({
                   className="sm:w-48 px-3 py-2 text-sm bg-gray-50 dark:bg-[#16162a] border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#e94560] dark:text-white"
                 >
                   <option value="all">All Categories</option>
-                  {categories.map(cat => (
+                  {categories.filter(cat => cat.slug !== 'shop').map(cat => (
                     <option key={cat.slug} value={cat.slug}>
                       {cat.name}
                     </option>

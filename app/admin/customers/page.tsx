@@ -261,8 +261,7 @@ function AdminCustomersPageInner() {
                       <th className="py-4 px-6 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {filteredCustomers.map(customer => {
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-xs font-semibold text-gray-700 dark:text-gray-300">{filteredCustomers.map(customer => {
                       const joinDate = new Date(customer.createdAt).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' });
                       return (
                         <tr key={customer.id} className="hover:bg-gray-50/30 dark:hover:bg-white/5 transition-colors">
@@ -438,8 +437,7 @@ function AdminCustomersPageInner() {
                       <th className="py-4 px-6 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {filteredLeads.map(lead => {
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80 text-xs font-semibold text-gray-700 dark:text-gray-300">{filteredLeads.map(lead => {
                       const optInDate = lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
                       return (
                         <tr key={lead.id} className="hover:bg-gray-50/30 dark:hover:bg-white/5 transition-colors">

@@ -162,7 +162,7 @@ export default function CategoryGridSettings({
                     }}
                   >
                     <option value="">-- Select Category --</option>
-                    {categories.map(c => (
+                    {categories.filter(c => c.slug !== 'shop').map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>

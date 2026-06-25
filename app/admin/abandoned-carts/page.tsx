@@ -485,8 +485,7 @@ export default function AbandonedCartsPage() {
                       <th className="py-4 px-6 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80">
-                    {filteredCarts.map(cart => (
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/80">{filteredCarts.map(cart => (
                       <tr 
                         key={cart.id} 
                         onClick={() => setSelectedCartId(cart.id)}

@@ -89,10 +89,9 @@ export async function POST(req: NextRequest) {
     if (mode === 'failed') {
       // 1. Get all active products from DB
       const { data: activeProducts } = await supabaseAdmin
-        .from('products')
-        .select('id')
-        .eq('active', true)
-        .is('deleted_at', null);
+      .from('products')
+      .select('id')
+      .is('deleted_at', null);
 
       if (activeProducts && activeProducts.length > 0) {
         const activeIds = activeProducts.map(p => p.id);
@@ -128,8 +127,7 @@ export async function POST(req: NextRequest) {
 
     let query = supabaseAdmin
       .from('products')
-      .select('*, product_images(*), product_variants(*), categories!category_id(*)')
-      .eq('active', true);
+      .select('*, product_images(*), product_variants(*), categories!category_id(*)');
 
     if (productIds !== null) {
       query = query.in('id', productIds);

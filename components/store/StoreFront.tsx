@@ -817,6 +817,16 @@ export default function StoreFront({
     ] as HomepageSection[];
   }, [sections]);
 
+  // Per-section Load More limits
+  const [loadMoreLimits, setLoadMoreLimits] = useState<Record<string, number>>({});
+
+  const handleLoadMore = (sectionId: string, baseLimit: number) => {
+    setLoadMoreLimits(prev => ({
+      ...prev,
+      [sectionId]: (prev[sectionId] || baseLimit) + 8
+    }));
+  };
+
   // Filter products based on search query and category
   const filteredProducts = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -918,34 +928,68 @@ export default function StoreFront({
   };
 
   const renderProductGrid = (section: HomepageSection) => {
-    const limit = section.settings?.limit ?? 8;
+    const baseLimit = section.settings?.limit ?? 8;
     const source = section.settings?.source ?? 'all';
+    const sortMethod = section.settings?.sortMethod || (source === 'featured' ? 'featured' : 'all');
+    const manualProductIds: string[] = section.settings?.manualProductIds || [];
+    const effectiveLimit = loadMoreLimits[section.id] || baseLimit;
+    const bottomEnableViewAll = section.settings?.bottomEnableViewAll === true;
+    const bottomEnableLoadMore = section.settings?.bottomEnableLoadMore === true;
     
-    // Filter display products dynamically based on source setting
+    // Filter display products dynamically based on source + sortMethod
     const displayProducts = (() => {
       let prodList = filteredProducts;
-      if (selectedCategoryId) {
-        prodList = prodList.filter(p => p.categoryId === selectedCategoryId);
-      } else if (source === 'featured') {
+
+      // Manual pick — use explicit product IDs in given order
+      if (sortMethod === 'manual' && manualProductIds.length > 0) {
+        return manualProductIds
+          .map(id => filteredProducts.find(p => p.id === id))
+          .filter((p): p is Product => !!p);
+      }
+
+      // Featured filter
+      if (sortMethod === 'featured' || source === 'featured') {
         prodList = prodList.filter(p => p.isFeatured);
+      } else if (sortMethod === 'category' && source !== 'all' && source !== 'featured') {
+        prodList = prodList.filter(p => p.categoryId === source || p.category?.slug === source);
+      } else if (selectedCategoryId) {
+        prodList = prodList.filter(p => p.categoryId === selectedCategoryId);
       } else if (source !== 'all' && source !== 'featured') {
         prodList = prodList.filter(p => p.categoryId === source || p.category?.slug === source);
       }
-      return prodList.slice(0, limit);
+
+      // Sort by recency
+      if (sortMethod === 'recent') {
+        prodList = [...prodList].sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+      }
+
+      return prodList.slice(0, effectiveLimit);
     })();
 
     const viewAllLink = (() => {
       if (section.settings?.viewAllUrl) {
         return section.settings.viewAllUrl;
       }
-      if (source !== 'all' && source !== 'featured') {
-        const cat = categories.find(c => c.id === source || c.slug === source);
+      const linkSource = sortMethod === 'manual' ? null : source;
+      if (linkSource && linkSource !== 'all' && linkSource !== 'featured') {
+        const cat = categories.find(c => c.id === linkSource || c.slug === linkSource);
         if (cat) {
           return `/shop?category=${cat.slug}`;
         }
       }
       return '/shop';
     })();
+
+    const allProductsCount = (() => {
+      if (sortMethod === 'manual') return manualProductIds.length;
+      let count = filteredProducts;
+      if (sortMethod === 'featured' || source === 'featured') count = count.filter(p => p.isFeatured);
+      else if (sortMethod === 'category' && source !== 'all' && source !== 'featured') count = count.filter(p => p.categoryId === source || p.category?.slug === source);
+      else if (source !== 'all' && source !== 'featured') count = count.filter(p => p.categoryId === source || p.category?.slug === source);
+      return count.length;
+    })();
+
+    const hasMore = displayProducts.length < allProductsCount && displayProducts.length >= effectiveLimit;
 
     return (
       <div key={section.id} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -964,6 +1008,35 @@ export default function StoreFront({
           currencySymbol={activeSettings.currencySymbol} 
           settings={activeSettings} 
         />
+        {(bottomEnableLoadMore || bottomEnableViewAll) && (
+          <div className="w-full flex items-center justify-center gap-3 mt-6 md:mt-8 px-4">
+            {bottomEnableLoadMore && hasMore && (
+              <button
+                type="button"
+                onClick={() => handleLoadMore(section.id, baseLimit)}
+                className="px-5 py-2.5 text-xs md:text-sm font-semibold tracking-wide uppercase rounded-full transition-all duration-200 shadow-sm active:scale-95 hover:brightness-90 cursor-pointer"
+                style={{
+                  backgroundColor: section.settings?.bottomLoadMoreBgColor || '#f1f5f9',
+                  color: section.settings?.bottomLoadMoreTextColor || '#1e293b',
+                }}
+              >
+                {section.settings?.bottomLoadMoreText || 'Load More'}
+              </button>
+            )}
+            {bottomEnableViewAll && (
+              <Link
+                href={viewAllLink}
+                className="px-5 py-2.5 text-xs md:text-sm font-semibold tracking-wide uppercase rounded-full transition-all duration-200 shadow-sm active:scale-95 hover:brightness-90"
+                style={{
+                  backgroundColor: section.settings?.bottomViewAllBgColor || '#FFD147',
+                  color: section.settings?.bottomViewAllTextColor || '#0f172a',
+                }}
+              >
+                {section.settings?.bottomViewAllText || 'View All'}
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     );
   };

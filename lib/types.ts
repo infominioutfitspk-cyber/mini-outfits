@@ -6,6 +6,7 @@ export interface Category {
   imageUrl?: string;
   sortOrder: number;
   active: boolean;
+  activeSortPreference?: string;
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -77,7 +78,6 @@ export interface Product {
   hasVariants: boolean;
   isService: boolean;
   isFeatured: boolean;
-  active: boolean;
   enableSwatches: boolean;
   showSwatchesOnArchive: boolean;
   customBadgeId?: string;
@@ -102,6 +102,7 @@ export interface Product {
   meta_last_synced_at?: string | null;
   deletedAt?: string | null;
   inventoryThreshold?: number;
+  sortOrder?: number;
   productCategories?: ProductCategoryRelation[];
   variationOrder?: string[];
   createdAt: string;
@@ -685,7 +686,5 @@ export interface ImportResult {
 export interface ProductCategoryRelation {
   productId: string;
   categoryId: string;
-  isFeatured: boolean;
-  isVisible: boolean;
   category?: Category;
 }

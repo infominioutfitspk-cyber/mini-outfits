@@ -266,8 +266,7 @@ function AdminReviewsPageInner() {
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredReviews.map((review) => (
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{filteredReviews.map((review) => (
                     <tr key={review.id} className="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors" onClick={() => handleOpenReview(review)}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">

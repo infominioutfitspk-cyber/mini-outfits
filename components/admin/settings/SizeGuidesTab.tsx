@@ -315,8 +315,7 @@ export default function SizeGuidesTab({
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {guideRows.map((row, rowIndex) => {
+                  <tbody>{guideRows.map((row, rowIndex) => {
                       const activeCols = guideColumns.split(',').map(s => s.trim()).filter(Boolean);
                       return (
                         <tr key={rowIndex} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/30">

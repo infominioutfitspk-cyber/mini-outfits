@@ -235,8 +235,7 @@ export default function SizeGuidesPage() {
                     <th className="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-16">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {newRows.map((row, ri) => {
+                <tbody>{newRows.map((row, ri) => {
                     const activeCols = newColumns.split(',').map(s => s.trim()).filter(Boolean);
                     return (
                       <tr key={ri} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/30">
@@ -461,8 +460,7 @@ export default function SizeGuidesPage() {
                               ))}
                             </tr>
                           </thead>
-                          <tbody>
-                            {guide.chart_data.map((row, ri) => (
+                          <tbody>{guide.chart_data.map((row, ri) => (
                               <tr key={ri} className="border-b border-gray-100 dark:border-gray-800">
                                 {cols.map((col, ci) => (
                                   <td key={ci} className="px-3 py-2 text-xs font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
