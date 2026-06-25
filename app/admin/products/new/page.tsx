@@ -32,7 +32,7 @@ export default async function NewProductPage({ searchParams }: PageProps) {
       initialProduct = {
         ...rest,
         id: '',
-        slug: `${original.slug}-copy`,
+        slug: `${original.slug}-copy-${Date.now()}`,
         sku: original.sku ? `${original.sku}-copy` : '',
         name: `${original.name} (Copy)`,
         createdAt: '',

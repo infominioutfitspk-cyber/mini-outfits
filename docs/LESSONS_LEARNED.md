@@ -787,3 +787,200 @@ Maine `/api/products/import` API route (`app/api/products/import/route.ts`) ke a
 ---
 
 > **Ek line mein:** "Import-export pipelines mein parent-child images ko map karein aur local bucket storage URLs ko process karne se pehle skip/reuse logic setup karein." 🚀
+
+---
+
+# Masla 9: Dev Server Load Hota Rahe / Response Na De (June 2026)
+
+---
+
+## Pehle Kya Tha (Symptom)
+
+`npm run dev` chalane ke baad terminal mein "Ready" likh aata hai, lekin browser mein page infinite loading pe rehta hai, kabhi response nahi aata. `curl http://localhost:3000` bhi timeout kha jata hai.
+
+---
+
+## Issue Kya Tha (Root Cause)
+
+`.next/` cache corrupt ho gayi thi. Next.js 16 ka dev server (Turbopack) hot-reload loop mein phans gaya tha:
+
+- **Yuz zombie build worker processes** spawn ho gaye the (dozens of `next-server` + build workers)
+- Har file change ya request par recompilation loop chalta raha
+- CPU 100% ho gaya aur server requests accept karna band kar diya
+
+---
+
+## Fix Kaise Hua
+
+```bash
+# 1. Pehle process kill karo
+kill -9 <PID>       # PID lene ke liye: lsof -i :3000
+
+# 2. Corrupt cache delete karo
+rm -rf .next
+
+# 3. Dobara start karo
+npm run dev
+```
+
+Ya ek command mein:
+
+```bash
+lsof -ti :3000 | xargs kill -9 2>/dev/null; rm -rf .next && npm run dev
+```
+
+---
+
+## Agar Baar Baar Ho (Prevention)
+
+| Cause | Fix |
+|---|---|
+| Turbopack ka bug | `npm run dev -- --no-turbopack` se pakka chalta hai |
+| Koi file jo change detect ho rahi ho | `node_modules/`, large assets check karo |
+| Circular import / syntax error | Terminal errors dekho, fix karo, phir restart |
+| RAM/resources khatam | Laptop restart karo, phir clean dev start karo |
+
+---
+
+## Next Time Yeh Na Aaye — Checklist
+
+```
+☐ Pehle check karo: lsof -i :3000 → process chal raha hai?
+☐ curl -I http://localhost:3000 → response aata hai?
+☐ Agar process chal raha hai lekin response nahi → .next corrupt hai
+☐ Kill process → rm -rf .next → npm run dev
+☐ Agar phir bhi na chale → --no-turbopack try karo
+☐ Terminal errors carefully dekho (circular import, syntax error)
+```
+
+---
+
+## Files Jo Fix Hueen
+
+- Koi file nahi — sirf `.next/` cache directory delete karni thi aur process restart karna tha.
+
+---
+
+> **Ek line mein:** "Next.js dev server response nahi de raha to pehla kaam: process kill karo, `.next/` delete karo, dobara start karo." 🔄
+
+---
+
+# Masla 10: Duplicate Product → Error 23505 (Unique Constraint Violation) (June 2026)
+
+---
+
+## Pehle Kya Tha (Symptom)
+
+Admin panel mein product duplicate karne par ye error aata tha:
+```
+POST /admin/products/new?duplicate=... 500 (Internal Server Error)
+{code: "23505", message: "duplicate key value violates unique constraint..."}
+```
+
+---
+
+## Issue Kya Tha (Root Cause)
+
+Do alag bugs mil ke ye error de rahe thay:
+
+### Bug 1: Duplicate slug collision
+`app/admin/products/new/page.tsx:35` mein slug set tha:
+```typescript
+slug: `${original.slug}-copy`,
+```
+Agar **same product do baar duplicate** karo to dono copies ka slug `original-slug-copy` hota — second save pe DB ka `UNIQUE` constraint violate ho jata.
+
+### Bug 2: Client-side auto-slug overwrite
+`components/admin/ProductForm.tsx:398-411` ka auto-slug `useEffect` server-side se aaya slug overwrite kar deta tha:
+```typescript
+// useEffect fires when !isEdit (duplicate case mein id='' hai)
+if (!isEdit && name) { setSlug(slugify(name)); }
+```
+Server ne `original-slug-copy` set kiya, lekin client ne turant name se naya slug generate kar ke overwrite kar diya. Agar woh slug kisi existing product se match kare to 23505 error.
+
+---
+
+## Fix Kaise Hua
+
+### Fix 1: Unique slug with timestamp
+`app/admin/products/new/page.tsx:35`:
+```diff
+- slug: `${original.slug}-copy`,
++ slug: `${original.slug}-copy-${Date.now()}`,
+```
+Ab har duplicate ka slug unique hai — collision impossible.
+
+### Fix 2: Skip auto-slug when server slug exists
+`components/admin/ProductForm.tsx:399`:
+```diff
+- if (!isEdit && name) {
++ if (!isEdit && name && !initialProduct?.slug) {
+```
+Auto-slug ab sirf tab fire hoga jab server ne koi slug nahi diya (normal new product). Duplicate case mein server ka slug preserve rahega.
+
+---
+
+## Next Time Yeh Na Aaye — Rules
+
+```
+✅ RULE: Duplicate slug mein hamesha timestamp ya random suffix lagao
+   ❌ slug: `${original.slug}-copy`
+   ✅ slug: `${original.slug}-copy-${Date.now()}`
+
+✅ RULE: Client-side auto-slug useEffect ko server-provided slug ko overwrite nahi karna chahiye
+   ❌ if (!isEdit && name) { setSlug(slugify(name)); }
+   ✅ if (!isEdit && name && !initialProduct?.slug) { setSlug(slugify(name)); }
+
+✅ RULE: Jab bhi koi value server se aati hai, useEffect mein usko preserve karo
+
+✅ RULE: PostgreSQL error code 23505 = unique_violation
+   Pehla kaam: check karo kaunsa unique column violate ho raha hai
+```
+
+### Checklist — Duplicate Feature Likhte Waqt:
+
+```
+☐ Duplicate slug unique banaya? (timestamp / random suffix)
+☐ Client-side useEffect server slug overwrite nahi kar raha?
+☐ Do baar duplicate kar ke test kiya?
+☐ Slug manually edit kar ke save kiya?
+```
+
+---
+
+## Files Jo Fix Hueen
+
+- [`app/admin/products/new/page.tsx`](file:///Users/shoaib/Documents/mini%20outfits%203/app/admin/products/new/page.tsx) — `slug: \`\${original.slug}-copy-\${Date.now()}\``
+- [`components/admin/ProductForm.tsx`](file:///Users/shoaib/Documents/mini%20outfits%203/components/admin/ProductForm.tsx) — auto-slug effect condition `&& !initialProduct?.slug`
+
+---
+
+> **Ek line mein:** "Duplicate product ka slug kabhi static `-copy` mat rakho — hamesha timestamp/suffix lagao aur client-side auto-slug ko server slug preserve karne do." 🔄
+
+---
+
+## Fix Prompt (Copy-Paste for Any Project)
+
+Jab bhi kisi bhi project mein duplicate product ka 23505 error aaye, ye prompt kisi bhi AI agent ko de do:
+
+```
+I'm getting PostgreSQL error code 23505 (unique_violation) when duplicating products. 
+The slug unique constraint is being violated. 
+
+Two bugs to fix:
+
+1. Find the file where duplicate product slug is generated (usually admin products new page).
+   Current pattern: `${original.slug}-copy`
+   Fix: Add timestamp suffix: `${original.slug}-copy-${Date.now()}`
+
+2. Find the ProductForm component's auto-slug useEffect.
+   Current pattern: `if (!isEdit && name) { setSlug(slugify(name)); }`
+   Fix: Add check for server-provided slug: `if (!isEdit && name && !initialProduct?.slug)`
+   This preserves the server-generated slug for duplicates.
+
+Files are typically:
+- app/admin/products/new/page.tsx (or similar)
+- components/admin/ProductForm.tsx (or similar)
+
+Apply both fixes.
+```

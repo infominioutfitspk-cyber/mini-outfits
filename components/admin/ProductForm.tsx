@@ -394,9 +394,9 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
   const [modName, setModName] = useState('');
   const [modPrice, setModPrice] = useState('');
 
-  // Auto-generate slug from name
+  // Auto-generate slug from name (only when no server-provided slug)
   useEffect(() => {
-    if (!isEdit && name) {
+    if (!isEdit && name && !initialProduct?.slug) {
       const timer = setTimeout(() => {
         setSlug(
           name
@@ -408,7 +408,7 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [name, isEdit]);
+  }, [name, isEdit, initialProduct?.slug]);
 
   // Handle Image Uploads
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
