@@ -194,7 +194,15 @@ export default function ProductForm({ categories, initialProduct, aiEnabled, sto
         ]);
         setAllBadges(b);
         setSizeGuidesList(sg);
-        setProductList((prods.data || []).filter((p: any) => p.id !== initialProduct?.id) as any);
+        const rawProducts: any[] = prods.data || [];
+        const seen = new Set<string>();
+        const unique = rawProducts.filter((p: any) => {
+          const key = p.name?.toLowerCase().trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setProductList(unique.filter((p: any) => p.id !== initialProduct?.id) as any);
       } catch (err) {
         console.error('Failed to load badges, size guides or products:', err);
       }
